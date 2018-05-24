@@ -1,0 +1,16 @@
+module ServiceProfiling_PortType {
+  import from ServiceProfiling_Types all;
+  
+  type port ManoMsg message {
+    out Setup_SFC;
+    out Add_VNF;
+    out Start_CMD;
+    in Start_CMD_reply;
+  }
+  
+  
+  type component MANO {
+    port ManoMsg Port;
+  };
+
+}

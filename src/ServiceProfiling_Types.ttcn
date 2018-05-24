@@ -1,0 +1,42 @@
+module ServiceProfiling_Types {
+  type record ServiceProfilingExperiment {
+    charstring name,
+    integer repetitions,
+    integer profiling_timeout,
+    charstring service_name,
+    ResourceConfigurations resourcecfgs,
+    MeasuringPointVNFs MpVNFs
+  };
+  
+  type record ResourceConfiguration {
+    charstring function_id,
+    charstring cpu_time,
+    charstring cpu_set,
+    charstring max_mem,
+    boolean sriov optional
+    // ...
+  };
+  
+  type record of ResourceConfiguration ResourceConfigurations;
+  
+  type record MeasuringPointVNF {
+    charstring name,
+    charstring connection_point,
+    charstring image,
+    charstring cmd optional
+  };
+  
+  type record of MeasuringPointVNF MeasuringPointVNFs;
+  
+  type record Setup_SFC { charstring service_name };
+
+  type record Add_VNF {
+    charstring name,
+    charstring connection_point,
+    charstring image
+  };
+
+  type record Start_CMD { charstring cmd };
+  type record Start_CMD_reply { charstring cmd_reply };
+  
+}

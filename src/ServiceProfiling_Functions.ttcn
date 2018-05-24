@@ -1,0 +1,8 @@
+module ServiceProfiling_Functions {
+
+  import from ServiceProfiling_Types all;
+  
+  //function f_setup_sfc(charstring service_name) runs on MANO {
+  //  Port.send( service_name );
+  //}
+}

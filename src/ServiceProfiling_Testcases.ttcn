@@ -1,0 +1,21 @@
+module ServiceProfiling_Testcases {
+
+	import from ServiceProfiling_Types all;
+	import from ServiceProfiling_PortType all;
+	import from ServiceProfiling_Functions all;
+	import from ServiceProfiling_Templates all;
+
+	testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
+	  map(mtc:Port, system:Port);
+	  
+	  template Setup_SFC setup_sfc_req := { spe.service_name }
+	  Port.send(setup_sfc_req);
+	  
+	  setverdict ( pass );
+	  stop
+	}
+	
+	control {
+	  execute(SimpleServiceProfiling(spexperiment));
+	}
+}
