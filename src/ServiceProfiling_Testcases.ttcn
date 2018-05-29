@@ -11,6 +11,12 @@ module ServiceProfiling_Testcases {
 	  template Setup_SFC setup_sfc_req := { spe.service_name }
 	  Port.send(setup_sfc_req);
 	  
+	  timer t := 2.0;
+	  t.start;
+	  t.timeout;
+	  
+	  Port.send(setup_sfc_req);
+	  
 	  setverdict ( pass );
 	  stop
 	}

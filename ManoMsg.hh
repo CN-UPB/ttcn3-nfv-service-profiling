@@ -13,6 +13,7 @@
 #include "ServiceProfiling_PortType.hh"
 #include <string>
 #include <curl/curl.h>
+#include <jsoncpp/json/json.h>
 
 namespace ServiceProfiling__PortType {
 
@@ -36,8 +37,8 @@ private:
 	bool debug;
 
 	/* vim-emu state */
-	std::string service_uuid;
-	std::string service_instance_uuid;
+	std::string sfc_service_uuid;
+	std::string sfc_service_instance_uuid;
 
 	/* Config parameters */
 	std::string vnf_path;
@@ -54,9 +55,14 @@ private:
 	static size_t replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp);
 	void setURL(std::string url);
 	void performRestRequest();
+	std::string uploadPackage(std::string filepath);
+	std::string startSfcService(std::string service_uuid);
+	void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
 
 	/* Other functions */
 	void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+	std::string getJsonValueFromReply(std::string key);
+	std::string getJsonDocument(Json::Value jsonv);
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

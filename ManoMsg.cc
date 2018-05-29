@@ -15,6 +15,7 @@
 #include <fstream>
 #include <streambuf>
 
+
 namespace ServiceProfiling__PortType {
 
 ManoMsg::ManoMsg(const char *par_port_name)
@@ -28,6 +29,10 @@ ManoMsg::ManoMsg(const char *par_port_name)
 	rest_url = "http://172.17.0.2:5000";
 	rest_username = "admin";
 	rest_password = "admin";
+
+	sfc_service_instance_uuid = "";
+	sfc_service_uuid = "";
+
 }
 
 ManoMsg::~ManoMsg()
@@ -111,40 +116,19 @@ void ManoMsg::user_stop()
 
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par)
 {
-	/* Onboard SFC */
+	if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
+		stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
+	}
+
 	std::string service_name = std::string(((const char*)send_par.service__name()));
 	std::string filepath = nsd_path + service_name;
 
 	log("Create SFC from %s", filepath.c_str());
 
-	setURL(rest_url + "/packages");
-
-	curl_mime *mime = curl_mime_init(curl);
-	curl_mimepart *part = curl_mime_addpart(mime);
-	curl_mime_filedata(part, filepath.c_str());
-	curl_mime_name(part, "package");
-
-	curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-
-	performRestRequest();
-	curl_mime_free(mime);
-
-	curl_easy_setopt(curl, CURLOPT_MIMEPOST, nullptr);
-
-	/* Get service_uuid */
-	/*Json::Value reply;
-	Json::Reader reader;
-	bool parseSucessful = reader.parse(replyBuffer.c_str(), reply);
-	if(!parseSucessful) {
-		TTCN_error("Could not parse reply from MANO system: %s\n", reader.getFormattedErrorMessages().c_str());
-	}
-	service_uuid = reply["service_uuid"].asString();
-	log("Current service_uuid is %s", service_uuid.c_str());*/
+	sfc_service_uuid = uploadPackage(filepath);
 
 	/* Start SFC */
-	setURL(rest_url + "/instantiations");
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{}");
-	performRestRequest();
+	sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
 
 	log("SFC created and running");
 }
@@ -173,7 +157,7 @@ void ManoMsg::performRestRequest() {
 	log("Perform request");
 	CURLcode res;
 
-	/* We have to overwrite the last reply or the new reply from the server will be appended */
+	/* We have to overwrite the last reply or the new reply from the server will be appended to the previous reply */
 	replyBuffer = "";
 
 	res = curl_easy_perform(curl);
@@ -196,6 +180,85 @@ void ManoMsg::log(const char *fmt, ...) {
 		TTCN_Logger::end_event();
 		va_end(ap);
 	}
+}
+
+std::string ManoMsg::uploadPackage(std::string filepath) {
+	log("Upload package from %s", filepath.c_str());
+
+	setURL(rest_url + "/packages");
+
+	curl_mime *mime = curl_mime_init(curl);
+	curl_mimepart *part = curl_mime_addpart(mime);
+	curl_mime_filedata(part, filepath.c_str());
+	curl_mime_name(part, "package");
+
+	curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+	performRestRequest();
+	curl_mime_free(mime);
+
+	// Disable POST
+	curl_easy_setopt(curl, CURLOPT_MIMEPOST, nullptr);
+
+	std::string service_uuid = getJsonValueFromReply("service_uuid");
+
+	return service_uuid;
+}
+
+std::string ManoMsg::startSfcService(std::string service_uuid) {
+	log("Start service with uuid %s", service_uuid.c_str());
+
+	Json::Value request;
+	request["service_uuid"] = service_uuid;
+
+	std::string document = getJsonDocument(request);
+
+	setURL(rest_url + "/instantiations");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
+	performRestRequest();
+
+	std::string service_instance_uuid = getJsonValueFromReply("service_instance_uuid");
+	return service_instance_uuid;
+}
+
+
+void ManoMsg::stopSfcService(std::string service_uuid, std::string service_instance_uuid) {
+	log("Stop service with uuid %s and instance uuid %s", service_uuid.c_str(), service_instance_uuid.c_str());
+
+	Json::Value request;
+	request["service_uuid"] = service_uuid;
+	request["service_instance_uuid"] = service_instance_uuid;
+
+	std::string document = getJsonDocument(request);
+	log("Request: %s", document.c_str());
+
+	setURL(rest_url + "/instantiations");
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
+	performRestRequest();
+
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+}
+
+std::string ManoMsg::getJsonValueFromReply(std::string key) {
+	Json::Value reply;
+	Json::Reader reader;
+
+	bool parseSucessful = reader.parse(replyBuffer.c_str(), reply);
+	if(!parseSucessful) {
+		TTCN_error("Could not parse reply from MANO system: %s\n", reader.getFormattedErrorMessages().c_str());
+	}
+
+	std::string value = reply[key].asString();
+	log("Current %s is %s", key.c_str(), value.c_str());
+
+	return value;
+}
+
+std::string ManoMsg::getJsonDocument(Json::Value jsonv) {
+	Json::StreamWriterBuilder wbuilder;
+	std::string document = Json::writeString(wbuilder, jsonv);
+	return document;
 }
 
 } /* end of namespace */
