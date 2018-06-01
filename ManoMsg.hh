@@ -43,7 +43,8 @@ private:
 	/* Config parameters */
 	std::string vnf_path;
 	std::string nsd_path;
-	std::string rest_url;
+	std::string gatekeeper_rest_url;
+	std::string vimemu_rest_url;
 	std::string rest_username;
 	std::string rest_password;
 	int port;
@@ -63,6 +64,8 @@ private:
 	void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 	std::string getJsonValueFromReply(std::string key);
 	std::string getJsonDocument(Json::Value jsonv);
+	void connectVnfToSfc(std::string vnf_name, std::string vnf_cp);
+	void startVNF(std::string vnf_name, std::string vnf_image);
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

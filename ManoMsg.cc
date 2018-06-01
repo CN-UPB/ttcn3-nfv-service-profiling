@@ -26,13 +26,13 @@ ManoMsg::ManoMsg(const char *par_port_name)
 	vnf_path = "/home/dark/vnfs/";
 	nsd_path = "/home/dark/son-examples/service-projects/";
 
-	rest_url = "http://172.17.0.2:5000";
+	gatekeeper_rest_url = "http://172.17.0.2:5000";
+	vimemu_rest_url = "http://172.17.0.2:5001";
 	rest_username = "admin";
 	rest_password = "admin";
 
-	sfc_service_instance_uuid = "";
-	sfc_service_uuid = "";
-
+	//sfc_service_instance_uuid = "";
+	//sfc_service_uuid = "";
 }
 
 ManoMsg::~ManoMsg()
@@ -76,22 +76,26 @@ void ManoMsg::user_map(const char * /*system_port*/)
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &replyBuffer);
 
         chunk = curl_slist_append(chunk, "Accept: application/json");
+        chunk = curl_slist_append(chunk, "Content-Type: application/json");
+        chunk = curl_slist_append(chunk, "Expect:");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-        curl_easy_setopt(curl, CURLOPT_HTTPPOST, 1L);
 
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-        curl_easy_setopt(curl, CURLOPT_POST, 0L);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         //curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
+        if(debug) {
+        	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        }
+
         // authentication
-        curl_easy_setopt(curl, CURLOPT_USERNAME, rest_username);
-        curl_easy_setopt(curl, CURLOPT_PASSWORD, rest_password);
+        curl_easy_setopt(curl, CURLOPT_USERNAME, rest_username.c_str());
+        curl_easy_setopt(curl, CURLOPT_PASSWORD, rest_password.c_str());
 
         // Test url if gatekeeper api is running
-        setURL(rest_url + "/instantiations");
+        setURL(gatekeeper_rest_url + "/instantiations");
 
         performRestRequest();
     }
@@ -127,15 +131,21 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par)
 
 	sfc_service_uuid = uploadPackage(filepath);
 
-	/* Start SFC */
 	sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
 
 	log("SFC created and running");
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& /*send_par*/)
+void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
 {
+	std::string vnf_name = std::string(((const char*)send_par.name()));
+	std::string vnf_cp = std::string(((const char*)send_par.connection__point()));
+	std::string vnf_image = std::string(((const char*)send_par.image()));
 
+	log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
+
+	startVNF(vnf_name, vnf_image);
+	//connectVnfToSfc(vnf_name, vnf_cp);
 }
 
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& /*send_par*/)
@@ -161,11 +171,12 @@ void ManoMsg::performRestRequest() {
 	replyBuffer = "";
 
 	res = curl_easy_perform(curl);
-	if(res != CURLE_OK) {
-		TTCN_error("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-	}
-
 	log("replyBuffer: %s", replyBuffer.c_str());
+	if(res != CURLE_OK) {
+		long response_code;
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+		TTCN_error("curl_easy_perform() failed with http code %ld: %s\n", response_code, curl_easy_strerror(res));
+	}
 
 	log("End perform request");
 }
@@ -185,7 +196,7 @@ void ManoMsg::log(const char *fmt, ...) {
 std::string ManoMsg::uploadPackage(std::string filepath) {
 	log("Upload package from %s", filepath.c_str());
 
-	setURL(rest_url + "/packages");
+	setURL(gatekeeper_rest_url + "/packages");
 
 	curl_mime *mime = curl_mime_init(curl);
 	curl_mimepart *part = curl_mime_addpart(mime);
@@ -213,7 +224,7 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
 
 	std::string document = getJsonDocument(request);
 
-	setURL(rest_url + "/instantiations");
+	setURL(gatekeeper_rest_url + "/instantiations");
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
 	performRestRequest();
 
@@ -232,12 +243,61 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
 	std::string document = getJsonDocument(request);
 	log("Request: %s", document.c_str());
 
-	setURL(rest_url + "/instantiations");
+	setURL(gatekeeper_rest_url + "/instantiations");
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
 	performRestRequest();
 
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+
+	log("Stopped service");
+}
+
+void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
+	log("Start measurement point VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
+	//curl_easy_setopt(curl, CURLOPT_PUT, 1L);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+
+	setURL(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
+
+	Json::Value request_vnf;
+	request_vnf["image"] = vnf_image;
+	std::string document_vnf = getJsonDocument(request_vnf);
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document_vnf.c_str());
+
+	performRestRequest();
+
+	//curl_easy_setopt(curl, CURLOPT_PUT, 0L);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+	log("Measurement point VNF created");
+}
+
+void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
+	log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
+	//curl_easy_setopt(curl, CURLOPT_PUT, 1L);
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+
+	setURL(vimemu_rest_url + "/restapi/network");
+
+	Json::Value request_net;
+	request_net["vnf_src_name"] = vnf_name; // + ":" + vnf_name + "-eth0";
+	request_net["vnf_dst_name"] = vnf_cp;
+	//request_net["vnf_src_interface"] = vnf_name + "-eth0";
+	//request_net["vnf_dst_interface"] = vnf_cp;
+	request_net["bidirectional"] = "True";
+	request_net["cookie"] = "10";
+	request_net["priority"] = "1000";
+	///restapi/network?priority=1000&bidirectional=True&cookie=10&vnf_src_name=client&vnf_dst_name=empty_vnf1
+
+	std::string document_net = getJsonDocument(request_net);
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document_net.c_str());
+
+	performRestRequest();
+
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+	//curl_easy_setopt(curl, CURLOPT_PUT, 0L);
+
+	log("Connected to connection point");
 }
 
 std::string ManoMsg::getJsonValueFromReply(std::string key) {
@@ -258,6 +318,9 @@ std::string ManoMsg::getJsonValueFromReply(std::string key) {
 std::string ManoMsg::getJsonDocument(Json::Value jsonv) {
 	Json::StreamWriterBuilder wbuilder;
 	std::string document = Json::writeString(wbuilder, jsonv);
+
+	log("JSON Payload: %s", document.c_str());
+
 	return document;
 }
 

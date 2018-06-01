@@ -13,13 +13,13 @@ module ServiceProfiling_Templates {
   };
 
   template MeasuringPointVNFs mpvnf := {
-    { name := "iperf-client",
-      connection_point := "ns:input",
-      image := "iperf",
+    { name := "client",
+      connection_point := "empty_vnf1",
+      image := "sonatanfv/sonata-iperf3-vnf",
       cmd := "iperf -c iperf-server"},
-    { name := "iperf-server",
-      connection_point := "ns:output",
-      image := "iperf",
+    { name := "server",
+      connection_point := "empty_vnf3",
+      image := "sonatanfv/sonata-iperf3-vnf",
       cmd := "iperf -s"}
   };
 
