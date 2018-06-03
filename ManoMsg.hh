@@ -76,6 +76,7 @@ protected:
 	void outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par);
 	void outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par);
 	void outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par);
+	void outgoing_send(const ServiceProfiling__Types::ResourceConfiguration& send_par);
 };
 
 } /* end of namespace */

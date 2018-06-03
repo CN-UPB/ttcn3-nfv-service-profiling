@@ -10,6 +10,7 @@
 #include "ManoMsg.hh"
 #include <curl/curl.h>
 #include <jsoncpp/json/json.h>
+#include "yaml-cpp/yaml.h" // yaml-cpp >=0.6 needed
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -23,7 +24,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
 {
 	debug = true;
 
-	vnf_path = "/home/dark/vnfs/";
+	vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
 	nsd_path = "/home/dark/son-examples/service-projects/";
 
 	gatekeeper_rest_url = "http://172.17.0.2:5000";
@@ -145,12 +146,29 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
 	log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
 
 	startVNF(vnf_name, vnf_image);
+	// TODO: does not work
 	//connectVnfToSfc(vnf_name, vnf_cp);
 }
 
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& /*send_par*/)
 {
 
+}
+
+void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration& send_par)
+{
+	std::string vnf_name = std::string(((const char*)send_par.function__id()));
+
+	log("Setting resource configuration of VNF %s", vnf_name.c_str());
+
+	std::string filename = vnf_path + vnf_name + "/" + vnf_name + "-vnfd.yml";
+
+	YAML::Node file = YAML::LoadFile(filename);
+
+
+
+	std::ofstream fout(filename);
+	fout << file;
 }
 
 size_t ManoMsg::replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {

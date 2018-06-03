@@ -4,6 +4,7 @@ module ServiceProfiling_PortType {
   type port ManoMsg message {
     out Setup_SFC;
     out Add_VNF;
+    out ResourceConfiguration;
     out Start_CMD;
     in Start_CMD_reply;
   }
