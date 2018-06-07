@@ -9,7 +9,6 @@ module ServiceProfiling_PortType {
     in Start_CMD_reply;
   }
   
-  
   type component MANO {
     port ManoMsg Port;
   };

@@ -39,4 +39,10 @@ module ServiceProfiling_Types {
   type record Start_CMD { charstring cmd };
   type record Start_CMD_reply { charstring cmd_reply };
   
+  type record Parameter_Macro {
+    float beginning,
+    float end,
+    float step
+  };
+  
 }

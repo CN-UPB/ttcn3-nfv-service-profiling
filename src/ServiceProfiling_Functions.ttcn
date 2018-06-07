@@ -5,4 +5,20 @@ module ServiceProfiling_Functions {
   //function f_setup_sfc(charstring service_name) runs on MANO {
   //  Port.send( service_name );
   //}
+  
+  function parseParameterMacros(charstring macro) return Parameter_Macro {
+    var charstring regex_step := "{(.+) to (.+) step (.+)}";
+    var charstring regex_set := "{(.+) to (.+) step (.+)}";
+    
+    var charstring beginning := regexp(macro,regex_step,0);
+    var charstring end := regexp(macro,regex_step,1);  
+    var charstring step := regexp(macro,regex_step,2);
+    
+    var Parameter_Macro r := {beginning := str2float(beginning),
+      end := str2float(end),
+      step := str2float(step)
+    };
+    
+    return r;
+  }
 }

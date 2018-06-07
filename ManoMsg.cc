@@ -15,6 +15,8 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <cstdlib>
+#include <boost/algorithm/string.hpp>
 
 
 namespace ServiceProfiling__PortType {
@@ -105,6 +107,10 @@ void ManoMsg::user_map(const char * /*system_port*/)
 
 void ManoMsg::user_unmap(const char * /*system_port*/)
 {
+	//if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
+	//	stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
+	//}
+
 	curl_easy_cleanup(curl);
 	curl_slist_free_all(chunk);
 }
@@ -146,8 +152,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
 	log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
 
 	startVNF(vnf_name, vnf_image);
-	// TODO: does not work
-	//connectVnfToSfc(vnf_name, vnf_cp);
+	connectVnfToSfc(vnf_name, vnf_cp);
 }
 
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& /*send_par*/)
@@ -158,6 +163,9 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& /*send_pa
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration& send_par)
 {
 	std::string vnf_name = std::string(((const char*)send_par.function__id()));
+	std::string memory_size = std::string(((const char*)send_par.max__mem()));
+	std::string cpu_set = std::string(((const char*)send_par.cpu__set()));
+
 
 	log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
@@ -165,10 +173,14 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration
 
 	YAML::Node file = YAML::LoadFile(filename);
 
+	file["virtual_deployment_units"][0]["resource_requirements"]["cpu"]["vcpus"] = 2; // TODO
+	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = memory_size;
+	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size_unit"] = "MB";
 
+	std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
 
-	std::ofstream fout(filename);
-	fout << file;
+	//std::ofstream fout(filename);
+	//fout << file;
 }
 
 size_t ManoMsg::replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -297,14 +309,19 @@ void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
 
 	setURL(vimemu_rest_url + "/restapi/network");
 
+	// TODO: Remove boost dependency (split function)
+	std::vector<std::string> vnf_cp_elements;
+	boost::split(vnf_cp_elements, vnf_cp, boost::is_any_of(":"));
+
 	Json::Value request_net;
 	request_net["vnf_src_name"] = vnf_name; // + ":" + vnf_name + "-eth0";
-	request_net["vnf_dst_name"] = vnf_cp;
-	//request_net["vnf_src_interface"] = vnf_name + "-eth0";
-	//request_net["vnf_dst_interface"] = vnf_cp;
+	request_net["vnf_dst_name"] = vnf_cp_elements[0];
+	request_net["vnf_src_interface"] = vnf_name + "-eth0";
+	request_net["vnf_dst_interface"] = vnf_cp_elements[1];
 	request_net["bidirectional"] = "True";
 	request_net["cookie"] = "10";
 	request_net["priority"] = "1000";
+
 	///restapi/network?priority=1000&bidirectional=True&cookie=10&vnf_src_name=client&vnf_dst_name=empty_vnf1
 
 	std::string document_net = getJsonDocument(request_net);
