@@ -39,6 +39,7 @@ private:
 	/* vim-emu state */
 	std::string sfc_service_uuid;
 	std::string sfc_service_instance_uuid;
+	std::vector<std::string> running_vnfs;
 
 	/* Config parameters */
 	std::string vnf_path;
@@ -66,6 +67,8 @@ private:
 	std::string getJsonDocument(Json::Value jsonv);
 	void connectVnfToSfc(std::string vnf_name, std::string vnf_cp);
 	void startVNF(std::string vnf_name, std::string vnf_image);
+	void stopAllVNF();
+	void stopVNF(std::string vnf_name);
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

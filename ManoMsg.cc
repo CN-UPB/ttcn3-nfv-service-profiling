@@ -107,9 +107,11 @@ void ManoMsg::user_map(const char * /*system_port*/)
 
 void ManoMsg::user_unmap(const char * /*system_port*/)
 {
-	//if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
-	//	stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
-	//}
+	stopAllVNF();
+
+	if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
+		stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
+	}
 
 	curl_easy_cleanup(curl);
 	curl_slist_free_all(chunk);
@@ -166,7 +168,6 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration
 	std::string memory_size = std::string(((const char*)send_par.max__mem()));
 	std::string cpu_set = std::string(((const char*)send_par.cpu__set()));
 
-
 	log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
 	std::string filename = vnf_path + vnf_name + "/" + vnf_name + "-vnfd.yml";
@@ -177,7 +178,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration
 	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = memory_size;
 	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size_unit"] = "MB";
 
-	std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
+	//std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
 
 	//std::ofstream fout(filename);
 	//fout << file;
@@ -285,7 +286,6 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
 
 void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
 	log("Start measurement point VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
-	//curl_easy_setopt(curl, CURLOPT_PUT, 1L);
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
 
 	setURL(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
@@ -297,9 +297,31 @@ void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
 
 	performRestRequest();
 
-	//curl_easy_setopt(curl, CURLOPT_PUT, 0L);
+	running_vnfs.push_back(vnf_name);
+
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
-	log("Measurement point VNF created");
+	log("Measurement point VNF %s created", vnf_name.c_str());
+}
+
+void ManoMsg::stopAllVNF() {
+	log("Stopping all measurement point VNFs");
+
+	for(std::string vnf_name : running_vnfs) {
+		stopVNF(vnf_name);
+	}
+
+	running_vnfs.clear();
+}
+
+void ManoMsg::stopVNF(std::string vnf_name) {
+	log("Stopping measurement point VNF %s", vnf_name.c_str());
+
+	setURL(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
+
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+	performRestRequest();
+
+	log("Measurement point VNF %s stopped", vnf_name.c_str());
 }
 
 void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
