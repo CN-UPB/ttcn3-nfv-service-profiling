@@ -17,7 +17,7 @@ module ServiceProfiling_Testcases {
 	  template Add_VNF add_vnf_request2 := { spe.MpVNFs[1].name, spe.MpVNFs[1].connection_point, spe.MpVNFs[1].image };
 	  Port.send(add_vnf_request2);
 	  
-	  Port.send(spe.resourcecfgs[0]);
+	  //Port.send(spe.resourcecfgs[0]);
 	  
 	  setverdict ( pass );
 	  stop

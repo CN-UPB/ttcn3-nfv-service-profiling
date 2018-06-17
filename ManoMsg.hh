@@ -12,8 +12,7 @@
 
 #include "ServiceProfiling_PortType.hh"
 #include <string>
-#include <curl/curl.h>
-#include <json/json.h>
+#include <vector>
 
 namespace ServiceProfiling__PortType {
 
@@ -51,24 +50,11 @@ private:
 	std::string rest_password;
 	int port;
 
-	/* curl */
-	CURL *curl;
-	CURLcode res;
-
-	struct curl_slist *chunk;
-	std::string replyBuffer;
-	static size_t replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp);
-	void setupCurl();
-	void cleanCurl();
-	bool performRestRequest(std::string url);
+	/* Other functions */
+	void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 	std::string uploadPackage(std::string filepath);
 	std::string startSfcService(std::string service_uuid);
 	void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
-
-	/* Other functions */
-	void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-	std::string getJsonValueFromReply(std::string key);
-	std::string getJsonDocument(Json::Value jsonv);
 	void connectVnfToSfc(std::string vnf_name, std::string vnf_cp);
 	void startVNF(std::string vnf_name, std::string vnf_image);
 	void stopAllVNF();
