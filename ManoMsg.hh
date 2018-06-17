@@ -13,7 +13,7 @@
 #include "ServiceProfiling_PortType.hh"
 #include <string>
 #include <curl/curl.h>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 
 namespace ServiceProfiling__PortType {
 
@@ -35,6 +35,7 @@ private:
 
 	/* Class members */
 	bool debug;
+	bool debug_http;
 
 	/* vim-emu state */
 	std::string sfc_service_uuid;
@@ -52,11 +53,14 @@ private:
 
 	/* curl */
 	CURL *curl;
+	CURLcode res;
+
 	struct curl_slist *chunk;
 	std::string replyBuffer;
 	static size_t replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp);
-	void setURL(std::string url);
-	void performRestRequest();
+	void setupCurl();
+	void cleanCurl();
+	bool performRestRequest(std::string url);
 	std::string uploadPackage(std::string filepath);
 	std::string startSfcService(std::string service_uuid);
 	void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
@@ -69,6 +73,8 @@ private:
 	void startVNF(std::string vnf_name, std::string vnf_image);
 	void stopAllVNF();
 	void stopVNF(std::string vnf_name);
+	void startDockerContainer();
+	void stopDockerContainer();
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

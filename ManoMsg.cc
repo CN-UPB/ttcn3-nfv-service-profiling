@@ -9,7 +9,7 @@
 
 #include "ManoMsg.hh"
 #include <curl/curl.h>
-#include <jsoncpp/json/json.h>
+#include <json/json.h>
 #include "yaml-cpp/yaml.h" // yaml-cpp >=0.6 needed
 #include <iostream>
 #include <string>
@@ -17,6 +17,10 @@
 #include <streambuf>
 #include <cstdlib>
 #include <boost/algorithm/string.hpp>
+#include <chrono>
+#include <thread>
+#include <cpprest/http_client.h>
+#include <cpprest/filestream.h>
 
 
 namespace ServiceProfiling__PortType {
@@ -25,8 +29,9 @@ ManoMsg::ManoMsg(const char *par_port_name)
 	: ManoMsg_BASE(par_port_name)
 {
 	debug = true;
+	debug_http = true;
 
-	vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
+	//vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
 	nsd_path = "/home/dark/son-examples/service-projects/";
 
 	gatekeeper_rest_url = "http://172.17.0.2:5000";
@@ -71,38 +76,25 @@ void ManoMsg::Handle_Fd_Event_Readable(int /*fd*/)
 
 void ManoMsg::user_map(const char * /*system_port*/)
 {
-	curl = curl_easy_init();
+	startDockerContainer();
 
-    if(curl) {
-        // Setup curl options
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, replyToMemoryCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &replyBuffer);
+	//setupCurl();
 
-        chunk = curl_slist_append(chunk, "Accept: application/json");
-        chunk = curl_slist_append(chunk, "Content-Type: application/json");
-        chunk = curl_slist_append(chunk, "Expect:");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	int retries = 5;
+	while(!performRestRequest(gatekeeper_rest_url + "/instantiations")) {
+		if(retries <= 0) {
+			TTCN_error("Could connect to vim-emu!");
+		} else {
+			log("Retrying request");
+		}
 
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        //curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+		// wait 2 seconds if the request did not work
+		std::this_thread::sleep_for(std::chrono::milliseconds(4000));
 
-        if(debug) {
-        	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        }
+		retries--;
+	}
 
-        // authentication
-        curl_easy_setopt(curl, CURLOPT_USERNAME, rest_username.c_str());
-        curl_easy_setopt(curl, CURLOPT_PASSWORD, rest_password.c_str());
-
-        // Test url if gatekeeper api is running
-        setURL(gatekeeper_rest_url + "/instantiations");
-
-        performRestRequest();
-    }
-
+	//cleanCurl();
 }
 
 void ManoMsg::user_unmap(const char * /*system_port*/)
@@ -113,8 +105,7 @@ void ManoMsg::user_unmap(const char * /*system_port*/)
 		stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
 	}
 
-	curl_easy_cleanup(curl);
-	curl_slist_free_all(chunk);
+	stopDockerContainer();
 }
 
 void ManoMsg::user_start()
@@ -139,7 +130,6 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par)
 	log("Create SFC from %s", filepath.c_str());
 
 	sfc_service_uuid = uploadPackage(filepath);
-
 	sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
 
 	log("SFC created and running");
@@ -170,18 +160,34 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::ResourceConfiguration
 
 	log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
-	std::string filename = vnf_path + vnf_name + "/" + vnf_name + "-vnfd.yml";
+	// TODO: filename
+	//std::string filename = nsd_path  + "sonata-empty-service-emu" + "/sources/vnf/" + vnf_name + "-vnfd.yml";
+	std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
+
+	log("Filename %s", filename.c_str());
+
+	//YAML::Node root(YAML::LoadFile(filename));
 
 	YAML::Node file = YAML::LoadFile(filename);
 
 	file["virtual_deployment_units"][0]["resource_requirements"]["cpu"]["vcpus"] = 2; // TODO
-	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = memory_size;
-	file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size_unit"] = "MB";
+	//file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = memory_size;
+	//file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = "\"512\""; // TODO
+	//file["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size_unit"] = "\"MB\"";
 
-	//std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
+	// Save the values as double qouted strings to the file
+	std::ofstream fout(filename);
+	YAML::Emitter em(fout);
+	em.SetIndent(2);
+	//em << file;
+
 
 	//std::ofstream fout(filename);
 	//fout << file;
+
+	//std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
+
+	log("Setting resource configuration of VNF %s completed", vnf_name.c_str());
 }
 
 size_t ManoMsg::replyToMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -189,14 +195,11 @@ size_t ManoMsg::replyToMemoryCallback(void *contents, size_t size, size_t nmemb,
     return size * nmemb;
 }
 
-void ManoMsg::setURL(std::string url) {
-	log("Next request to %s.", url.c_str());
-	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-}
+bool ManoMsg::performRestRequest(std::string url) {
+	bool sucessfull = true;
+	log("Perform request to %s.", url.c_str());
 
-void ManoMsg::performRestRequest() {
-	log("Perform request");
-	CURLcode res;
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
 	/* We have to overwrite the last reply or the new reply from the server will be appended to the previous reply */
 	replyBuffer = "";
@@ -204,12 +207,15 @@ void ManoMsg::performRestRequest() {
 	res = curl_easy_perform(curl);
 	log("replyBuffer: %s", replyBuffer.c_str());
 	if(res != CURLE_OK) {
-		long response_code;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-		TTCN_error("curl_easy_perform() failed with http code %ld: %s\n", response_code, curl_easy_strerror(res));
+		//long response_code;
+		//curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+		//TTCN_error("curl_easy_perform() failed with http code %ld: %s\n", response_code, curl_easy_strerror(res));
+		sucessfull = false;
 	}
 
 	log("End perform request");
+
+	return sucessfull;
 }
 
 void ManoMsg::log(const char *fmt, ...) {
@@ -227,7 +233,7 @@ void ManoMsg::log(const char *fmt, ...) {
 std::string ManoMsg::uploadPackage(std::string filepath) {
 	log("Upload package from %s", filepath.c_str());
 
-	setURL(gatekeeper_rest_url + "/packages");
+	setupCurl();
 
 	curl_mime *mime = curl_mime_init(curl);
 	curl_mimepart *part = curl_mime_addpart(mime);
@@ -235,15 +241,11 @@ std::string ManoMsg::uploadPackage(std::string filepath) {
 	curl_mime_name(part, "package");
 
 	curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-
-	performRestRequest();
+	performRestRequest(gatekeeper_rest_url + "/packages");
 	curl_mime_free(mime);
-
-	// Disable POST
-	curl_easy_setopt(curl, CURLOPT_MIMEPOST, nullptr);
+	cleanCurl();
 
 	std::string service_uuid = getJsonValueFromReply("service_uuid");
-
 	return service_uuid;
 }
 
@@ -252,12 +254,12 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
 
 	Json::Value request;
 	request["service_uuid"] = service_uuid;
-
 	std::string document = getJsonDocument(request);
 
-	setURL(gatekeeper_rest_url + "/instantiations");
+	setupCurl();
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
-	performRestRequest();
+	performRestRequest(gatekeeper_rest_url + "/instantiations");
+	cleanCurl();
 
 	std::string service_instance_uuid = getJsonValueFromReply("service_instance_uuid");
 	return service_instance_uuid;
@@ -270,36 +272,33 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
 	Json::Value request;
 	request["service_uuid"] = service_uuid;
 	request["service_instance_uuid"] = service_instance_uuid;
-
 	std::string document = getJsonDocument(request);
 	log("Request: %s", document.c_str());
 
-	setURL(gatekeeper_rest_url + "/instantiations");
+	setupCurl();
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document.c_str());
-	performRestRequest();
-
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
+	performRestRequest(gatekeeper_rest_url + "/instantiations");
+	cleanCurl();
 
 	log("Stopped service");
 }
 
 void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
 	log("Start measurement point VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-
-	setURL(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
 
 	Json::Value request_vnf;
 	request_vnf["image"] = vnf_image;
 	std::string document_vnf = getJsonDocument(request_vnf);
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document_vnf.c_str());
 
-	performRestRequest();
+	setupCurl();
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document_vnf.c_str());
+	performRestRequest(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
+	cleanCurl();
 
 	running_vnfs.push_back(vnf_name);
 
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
 	log("Measurement point VNF %s created", vnf_name.c_str());
 }
 
@@ -316,20 +315,16 @@ void ManoMsg::stopAllVNF() {
 void ManoMsg::stopVNF(std::string vnf_name) {
 	log("Stopping measurement point VNF %s", vnf_name.c_str());
 
-	setURL(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
-
+	setupCurl();
 	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-	performRestRequest();
+	performRestRequest(vimemu_rest_url + "/restapi/compute/" + "dc1/" + vnf_name); // TODO: dc1 configureable
+	cleanCurl();
 
 	log("Measurement point VNF %s stopped", vnf_name.c_str());
 }
 
 void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
 	log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
-	//curl_easy_setopt(curl, CURLOPT_PUT, 1L);
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-
-	setURL(vimemu_rest_url + "/restapi/network");
 
 	// TODO: Remove boost dependency (split function)
 	std::vector<std::string> vnf_cp_elements;
@@ -347,12 +342,12 @@ void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
 	///restapi/network?priority=1000&bidirectional=True&cookie=10&vnf_src_name=client&vnf_dst_name=empty_vnf1
 
 	std::string document_net = getJsonDocument(request_net);
+
+	setupCurl();
+	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, document_net.c_str());
-
-	performRestRequest();
-
-	curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, nullptr);
-	//curl_easy_setopt(curl, CURLOPT_PUT, 0L);
+	performRestRequest(vimemu_rest_url + "/restapi/network");
+	cleanCurl();
 
 	log("Connected to connection point");
 }
@@ -379,6 +374,72 @@ std::string ManoMsg::getJsonDocument(Json::Value jsonv) {
 	log("JSON Payload: %s", document.c_str());
 
 	return document;
+}
+
+void ManoMsg::startDockerContainer() {
+	log("Starting docker container");
+
+	std::string cmd = "docker run --name vim-emu -d --rm --privileged --pid='host' -v /var/run/docker.sock:/var/run/docker.sock vim-emu-img > /dev/null";
+	int status = std::system(cmd.c_str());
+
+	if(status < 0) {
+		TTCN_error("Could start docker container!");
+	}
+
+	log("Started docker container");
+}
+
+void ManoMsg::stopDockerContainer() {
+	log("Stopping docker container");
+	std::string cmd = "docker stop vim-emu > /dev/null";
+	int status = std::system(cmd.c_str());
+
+	if(status < 0) {
+		TTCN_error("Could stop docker container!");
+	}
+
+	log("Stopped docker container");
+}
+
+void ManoMsg::setupCurl() {
+	log("Setting up curl");
+	curl = curl_easy_init();
+
+	if(curl) {
+	        // Setup curl options
+	        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, replyToMemoryCallback);
+	        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &replyBuffer);
+
+	        chunk = nullptr;
+	        chunk = curl_slist_append(chunk, "Accept: application/json");
+	        chunk = curl_slist_append(chunk, "Content-Type: application/json");
+	        chunk = curl_slist_append(chunk, "Expect:");
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+	        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+	        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+	        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30);
+
+	        if(debug_http) {
+	        	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	        }
+
+	        // authentication
+	        curl_easy_setopt(curl, CURLOPT_USERNAME, rest_username.c_str());
+	        curl_easy_setopt(curl, CURLOPT_PASSWORD, rest_password.c_str());
+	} else {
+		TTCN_error("Could not setup curl!");
+	}
+
+}
+
+void ManoMsg::cleanCurl() {
+	log("Cleaning up curl");
+	curl_easy_cleanup(curl);
+	curl_slist_free_all(chunk);
 }
 
 } /* end of namespace */

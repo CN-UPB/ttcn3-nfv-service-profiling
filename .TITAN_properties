@@ -12,11 +12,12 @@
       <includeSourceInfo>true</includeSourceInfo>
       <addSourceLineInfo>true</addSourceLineInfo>
       <activateDebugger>true</activateDebugger>
-      <optimizationLevel>None</optimizationLevel>
       <linkerLibraries>
         <listItem>curl</listItem>
         <listItem>jsoncpp</listItem>
         <listItem>yaml-cpp</listItem>
+        <listItem>cpprest</listItem>
+        <listItem>boost_system</listItem>
       </linkerLibraries>
     </MakefileSettings>
     <LocalBuildSettings>
