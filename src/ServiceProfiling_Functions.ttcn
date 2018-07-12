@@ -6,7 +6,7 @@ module ServiceProfiling_Functions {
   //  Port.send( service_name );
   //}
   
-  function parseParameterMacros(charstring macro) return Parameter_Macro {
+  function parseParameterMacrosSteps(charstring macro) return Parameter_Macro {
     var charstring regex_step := "{(.+) to (.+) step (.+)}";
     var charstring regex_set := "{(.+) to (.+) step (.+)}";
     
@@ -21,4 +21,6 @@ module ServiceProfiling_Functions {
     
     return r;
   }
+  
+  //external function parseParameterMacrosList(charstring macro) return integerList;
 }

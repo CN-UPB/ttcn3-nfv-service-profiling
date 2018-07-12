@@ -4,10 +4,10 @@ module ServiceProfiling_PortType {
   type port ManoMsg message {
     out Setup_SFC;
     out Add_VNF;
-    out ResourceConfiguration;
+    out Set_Resource_Config;
     out Start_CMD;
     in Start_CMD_reply;
-  }
+  };
   
   type component MANO {
     port ManoMsg Port;

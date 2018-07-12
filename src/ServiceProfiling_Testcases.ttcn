@@ -11,13 +11,14 @@ module ServiceProfiling_Testcases {
 	  template Setup_SFC setup_sfc_req := { spe.service_name }
 	  Port.send(setup_sfc_req);
 	  
-	  template Add_VNF add_vnf_request1 := { spe.MpVNFs[0].name, spe.MpVNFs[0].connection_point, spe.MpVNFs[0].image };
+	  template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
 	  Port.send(add_vnf_request1);
 	  
-	  template Add_VNF add_vnf_request2 := { spe.MpVNFs[1].name, spe.MpVNFs[1].connection_point, spe.MpVNFs[1].image };
+	  template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
 	  Port.send(add_vnf_request2);
 	  
-	  //Port.send(spe.resourcecfgs[0]);
+	  template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
+	  Port.send(resource_config_request);
 	  
 	  setverdict ( pass );
 	  stop

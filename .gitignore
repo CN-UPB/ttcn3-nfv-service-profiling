@@ -1,1 +1,4 @@
 bin/
+*.log
+*.o
+src/compile

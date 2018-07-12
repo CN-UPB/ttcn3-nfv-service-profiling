@@ -2,13 +2,14 @@ module ServiceProfiling_Templates {
   import from ServiceProfiling_Types all;
 
   template ResourceConfigurations rcfg := {
-    { function_id := "snort_vnf",
-      cpu_time := "${0.1 to 1.0 step 0.1}",
-      cpu_set := "0",
-      max_mem := "${64, 128, 256}"}
+    { function_id := "snort-vnf",
+      vcpu := {1, 2, 1},
+      //cpu_time := "${0.1 to 1.0 step 0.1}",
+      //cpu_set := "0",
+      memory := {64, 1024, 64} }
   };
 
-  template MeasuringPointVNFs mpvnf := {
+  template Agents agent_list := {
     { name := "client",
       connection_point := "snort_vnf:input",
       image := "sonatanfv/sonata-iperf3-vnf",
@@ -24,7 +25,7 @@ module ServiceProfiling_Templates {
     repetitions := 10,
     profiling_timeout := 300,
     service_name := "sonata-snort-service.son",
-    resourcecfgs := rcfg, MpVNFs := mpvnf  
+    resourcecfgs := rcfg, agents := agent_list
   };
   
 }

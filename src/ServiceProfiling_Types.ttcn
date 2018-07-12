@@ -1,32 +1,41 @@
 module ServiceProfiling_Types {
-  type record ServiceProfilingExperiment {
+  type set ServiceProfilingExperiment {
     charstring name,
     integer repetitions,
     integer profiling_timeout,
     charstring service_name,
     ResourceConfigurations resourcecfgs,
-    MeasuringPointVNFs MpVNFs
+    Agents agents
   };
   
-  type record ResourceConfiguration {
+  type set ResourceConfiguration {
     charstring function_id,
-    charstring cpu_time,
-    charstring cpu_set,
-    charstring max_mem,
-    boolean sriov optional
+    ResourceMacro memory,
+    ResourceMacro vcpu,
+    ResourceMacro storage optional
+    //charstring cpu_time,
+    //charstring cpu_set,
+    //charstring max_mem,
+    //boolean sriov optional
     // ...
   };
+
+  type record ResourceMacro {
+    integer start_value,
+    integer end_value,
+    integer step
+  }
   
   type record of ResourceConfiguration ResourceConfigurations;
   
-  type record MeasuringPointVNF {
+  type set Agent {
     charstring name,
     charstring connection_point,
     charstring image,
     charstring cmd optional
   };
   
-  type record of MeasuringPointVNF MeasuringPointVNFs;
+  type record of Agent Agents;
   
   type record Setup_SFC { charstring service_name };
 
@@ -35,8 +44,13 @@ module ServiceProfiling_Types {
     charstring connection_point,
     charstring image
   };
+  
+  type record Set_Resource_Config {
+    charstring service_name,
+    ResourceConfiguration resourcecfg
+  };
 
-  type record Start_CMD { charstring cmd };
+  type record Start_CMD { charstring cmd, charstring vnf };
   type record Start_CMD_reply { charstring cmd_reply };
   
   type record Parameter_Macro {
@@ -44,5 +58,7 @@ module ServiceProfiling_Types {
     float end,
     float step
   };
+  
+  type record of integer integerList;
   
 }
