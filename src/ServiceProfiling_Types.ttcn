@@ -7,7 +7,19 @@ module ServiceProfiling_Types {
     ResourceConfigurations resourcecfgs,
     Agents agents
   };
-  
+
+  type set ResourceConfigurationActual {
+    charstring function_id,
+    integer memory,
+    integer vcpu,
+    integer storage optional
+    //charstring cpu_time,
+    //charstring cpu_set,
+    //charstring max_mem,
+    //boolean sriov optional
+    // ...
+  };
+
   type set ResourceConfiguration {
     charstring function_id,
     ResourceMacro memory,
@@ -21,9 +33,9 @@ module ServiceProfiling_Types {
   };
 
   type record ResourceMacro {
-    integer start_value,
-    integer end_value,
-    integer step
+    float start_value,
+    float end_value,
+    float step
   }
   
   type record of ResourceConfiguration ResourceConfigurations;

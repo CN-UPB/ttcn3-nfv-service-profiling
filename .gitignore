@@ -1,3 +1,9 @@
 *.log
 *.o
 src/compile
+src/ManoMsg.d
+build/*.cc
+build/*.hh
+build/*.d
+build/compile
+build/nfv-service-profiling

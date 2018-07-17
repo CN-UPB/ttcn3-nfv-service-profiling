@@ -3,21 +3,21 @@ module ServiceProfiling_Templates {
 
   template ResourceConfigurations rcfg := {
     { function_id := "snort-vnf",
-      vcpu := {1, 2, 1},
+      vcpu := {1.0, 2.0, 1.0},
       //cpu_time := "${0.1 to 1.0 step 0.1}",
       //cpu_set := "0",
-      memory := {64, 1024, 64} }
+      memory := {64.0, 1024.0, 64.0} }
   };
 
   template Agents agent_list := {
-    { name := "client",
-      connection_point := "snort_vnf:input",
-      image := "sonatanfv/sonata-iperf3-vnf",
-      cmd := "iperf -c iperf-server"},
-    { name := "server",
+     { name := "server",
       connection_point := "snort_vnf:output",
-      image := "sonatanfv/sonata-iperf3-vnf",
-      cmd := "iperf -s"}
+      image := "sonata-iperf3-vnf-ssh",
+      cmd := "iperf -s"},
+      { name := "client",
+      connection_point := "snort_vnf:input",
+      image := "sonata-iperf3-vnf-ssh",
+      cmd := "iperf -c iperf-server"}
   };
 
   template ServiceProfilingExperiment spexperiment := {

@@ -62,6 +62,7 @@ private:
 	void stopVNF(std::string vnf_name);
 	void startDockerContainer();
 	void stopDockerContainer();
+    void start_local_program(std::string, std::vector<std::string>* stdout);
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

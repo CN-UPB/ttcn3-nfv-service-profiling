@@ -7,7 +7,10 @@ module ServiceProfiling_Testcases {
 
 	testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
 	  map(mtc:Port, system:Port);
-	  
+
+	  template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
+	  Port.send(resource_config_request);
+
 	  template Setup_SFC setup_sfc_req := { spe.service_name }
 	  Port.send(setup_sfc_req);
 	  
@@ -16,11 +19,14 @@ module ServiceProfiling_Testcases {
 	  
 	  template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
 	  Port.send(add_vnf_request2);
-	  
-	  template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
-	  Port.send(resource_config_request);
-	  
-	  setverdict ( pass );
+
+      template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name}
+      Port.send(start_cmd_request1);
+
+      template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name}
+      Port.send(start_cmd_request2);
+
+  	  setverdict ( pass );
 	  stop
 	}
 	

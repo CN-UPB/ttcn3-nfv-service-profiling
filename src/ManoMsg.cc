@@ -43,7 +43,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
 	rest_username = "admin";
 	rest_password = "admin";
 
-	manage_docker = true;
+	manage_docker = false;
 
 	//sfc_service_instance_uuid = "";
 	//sfc_service_uuid = "";
@@ -167,38 +167,39 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
 	std::string vnf_name = std::string(((const char*)send_par.vnf()));
 	std::string cmd = std::string(((const char*)send_par.cmd()));
 
-    boost::process::ipstream out;
+    start_local_program("docker exec mn.client service ssh start", nullptr);
 
-    boost::process::child c1("docker exec mn.client service ssh start");
-    c1.wait();
-
-    boost::process::child c2("docker port mn.client 22", boost::process::std_out > out);
-
-    std::vector<std::string> data;
-    std::string line;
-
-    while (c2.running() && std::getline(out, line) && !line.empty())
-            data.push_back(line);
-
-    c2.wait();
+    std::vector<std::string> port_stdout;
+    start_local_program("docker port mn.client 22", &port_stdout);
 
     std::vector<std::string> port_elements;
-    boost::split(port_elements, data[0], boost::is_any_of(":"));
-
+    boost::split(port_elements, port_stdout[0], boost::is_any_of(":"));
     std::string agent_port = port_elements[1];
 
-    // TODO: Configureable password
-    std::string command = "sshpass -p \"password\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " ps";
+    std::vector<std::string> client_address;
+    std::vector<std::string> server_address;
+    start_local_program("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn.client", client_address);
+    start_local_program("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn.server", server_address);
 
-    boost::process::child c3(command, boost::process::std_out > out);
+    // TODO: Configureable password
+    std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd + " " + server_address;
+
+    std::vector<std::string> command_stdout;
+    start_local_program(command, &command_stdout);
 }
 
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config& send_par)
 {
 	std::string service_name = std::string(((const char*)send_par.service__name()));
 	std::string vnf_name = std::string(((const char*)send_par.resourcecfg().function__id()));
-	std::string memory_size = std::string(((const char*)send_par.resourcecfg().max__mem()));
-	std::string cpu_set = std::string(((const char*)send_par.resourcecfg().cpu__set()));
+
+    // Resource configuration values
+	auto memory_size_start = float(((const float)send_par.resourcecfg().memory().start__value()));
+	auto memory_size_end = float(((const float)send_par.resourcecfg().memory().end__value()));
+	auto memory_size_step = float(((const float)send_par.resourcecfg().memory().step()));
+	auto vcpu_start_value = float(((const float)send_par.resourcecfg().vcpu().start__value()));
+	auto vcpu_end_value = float(((const float)send_par.resourcecfg().vcpu().end__value()));
+	auto vcpu_step = float(((const float)send_par.resourcecfg().vcpu().step()));
 
 	std::vector<std::string> service_name_elements;
 	boost::split(service_name_elements, service_name, boost::is_any_of("."));
@@ -463,5 +464,20 @@ void ManoMsg::stopDockerContainer() {
 	log("Stopped docker container");
 }
 
-} /* end of namespace */
+void ManoMsg::start_local_program(std::string command, std::vector<std::string>* stdout) {
+        boost::process::ipstream out;
+        boost::process::child c(command, boost::process::std_out > out);
 
+        if(stdout != nullptr) {
+                //std::vector<std::string> data;
+                std::string line;
+
+                while (c.running() && std::getline(out, line) && !line.empty())
+                        stdout->push_back(line);
+        }
+
+        c.wait();
+}
+
+
+} /* end of namespace */
