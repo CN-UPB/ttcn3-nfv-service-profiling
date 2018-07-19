@@ -1,36 +1,48 @@
 module ServiceProfiling_Testcases {
 
-	import from ServiceProfiling_Types all;
-	import from ServiceProfiling_PortType all;
-	import from ServiceProfiling_Functions all;
-	import from ServiceProfiling_Templates all;
+    import from ServiceProfiling_Types all;
+    import from ServiceProfiling_PortType all;
+    import from ServiceProfiling_Functions all;
+    import from ServiceProfiling_Templates all;
 
-	testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
-	  map(mtc:Port, system:Port);
+    testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
+        map(mtc:Port, system:Port);
+        for(var integer i := 0; i < lengthof(spe.resourcecfgs); i := i + 1) {
+            for(var integer j := 0; j < lengthof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
+                var ResourceMacro current_resource_macro := valueof(spe.resourcecfgs[i].resource_macros[j]);
 
-	  template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
-	  Port.send(resource_config_request);
+                for(var float start_value := valueof(current_resource_macro.start_value);
+                    start_value <= valueof(current_resource_macro.end_value);
+                    start_value := start_value + valueof(current_resource_macro.step)) {
 
-	  template Setup_SFC setup_sfc_req := { spe.service_name }
-	  Port.send(setup_sfc_req);
-	  
-	  template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
-	  Port.send(add_vnf_request1);
-	  
-	  template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
-	  Port.send(add_vnf_request2);
+                        template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
+                        Port.send(resource_config_request);
+                }
+            }
+        }
 
-      template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name}
-      Port.send(start_cmd_request1);
+        template Setup_SFC setup_sfc_req := { spe.service_name }
+        Port.send(setup_sfc_req);
 
-      template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name}
-      Port.send(start_cmd_request2);
+        template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
+        Port.send(add_vnf_request1);
 
-  	  setverdict ( pass );
-	  stop
-	}
-	
-	control {
-	  execute(SimpleServiceProfiling(spexperiment));
-	}
+        template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
+        Port.send(add_vnf_request2);
+
+        template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name}
+        Port.send(start_cmd_request1);
+
+        template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name}
+        Port.send(start_cmd_request2);
+
+        Port.receive;
+
+        setverdict ( pass );
+        stop
+    }
+
+    control {
+        execute(SimpleServiceProfiling(spexperiment));
+    }
 }

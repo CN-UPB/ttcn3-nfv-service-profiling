@@ -4,15 +4,13 @@ module ServiceProfiling_Types {
     integer repetitions,
     integer profiling_timeout,
     charstring service_name,
-    ResourceConfigurations resourcecfgs,
+    ResourceConfigurationMacros resourcecfgs,
     Agents agents
   };
 
-  type set ResourceConfigurationActual {
+  type record ResourceConfiguration {
     charstring function_id,
-    integer memory,
-    integer vcpu,
-    integer storage optional
+    RessourceValues resource_values
     //charstring cpu_time,
     //charstring cpu_set,
     //charstring max_mem,
@@ -20,25 +18,36 @@ module ServiceProfiling_Types {
     // ...
   };
 
-  type set ResourceConfiguration {
+  type record of ResourceConfiguration ResourceConfigurations;
+
+  type record ResourceConfigurationMacro {
     charstring function_id,
-    ResourceMacro memory,
-    ResourceMacro vcpu,
-    ResourceMacro storage optional
+    ResourceMacros resource_macros
+    // vcpu, memory, storage...
     //charstring cpu_time,
     //charstring cpu_set,
     //charstring max_mem,
     //boolean sriov optional
     // ...
   };
+
+  type record of ResourceConfigurationMacro ResourceConfigurationMacros;
 
   type record ResourceMacro {
+    charstring name,
     float start_value,
     float end_value,
     float step
   }
-  
-  type record of ResourceConfiguration ResourceConfigurations;
+
+  type record of ResourceMacro ResourceMacros;
+
+  type record RessourceValue {
+    charstring name,
+    charstring actual_value
+  }
+
+  type record of RessourceValue RessourceValues;
   
   type set Agent {
     charstring name,
