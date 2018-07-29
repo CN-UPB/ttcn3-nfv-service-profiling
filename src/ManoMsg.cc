@@ -211,12 +211,12 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config
     std::string vnf_name = std::string(((const char*)send_par.resourcecfg().function__id()));
 
     // Resource configuration values
-    auto memory_size_start = float(((const float)send_par.resourcecfg().memory().start__value()));
+    /*auto memory_size_start = float(((const float)send_par.resourcecfg().memory().start__value()));
     auto memory_size_end = float(((const float)send_par.resourcecfg().memory().end__value()));
     auto memory_size_step = float(((const float)send_par.resourcecfg().memory().step()));
     auto vcpu_start_value = float(((const float)send_par.resourcecfg().vcpu().start__value()));
     auto vcpu_end_value = float(((const float)send_par.resourcecfg().vcpu().end__value()));
-    auto vcpu_step = float(((const float)send_par.resourcecfg().vcpu().step()));
+    auto vcpu_step = float(((const float)send_par.resourcecfg().vcpu().step()));*/
 
     std::vector<std::string> service_name_elements;
     boost::split(service_name_elements, service_name, boost::is_any_of("."));

@@ -7,16 +7,17 @@ module ServiceProfiling_Testcases {
 
     testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
         map(mtc:Port, system:Port);
-        for(var integer i := 0; i < lengthof(spe.resourcecfgs); i := i + 1) {
-            for(var integer j := 0; j < lengthof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
+        //f_create_starting_resource_config(spe:
+        for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
+            for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
                 var ResourceMacro current_resource_macro := valueof(spe.resourcecfgs[i].resource_macros[j]);
 
                 for(var float start_value := valueof(current_resource_macro.start_value);
                     start_value <= valueof(current_resource_macro.end_value);
                     start_value := start_value + valueof(current_resource_macro.step)) {
 
-                        template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
-                        Port.send(resource_config_request);
+                        //template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
+                        //Port.send(resource_config_request);
                 }
             }
         }

@@ -1,26 +1,26 @@
 module ServiceProfiling_Functions {
 
-  import from ServiceProfiling_Types all;
-  
-  //function f_setup_sfc(charstring service_name) runs on MANO {
-  //  Port.send( service_name );
-  //}
-  
-  function parseParameterMacrosSteps(charstring macro) return Parameter_Macro {
-    var charstring regex_step := "{(.+) to (.+) step (.+)}";
-    var charstring regex_set := "{(.+) to (.+) step (.+)}";
-    
-    var charstring beginning := regexp(macro,regex_step,0);
-    var charstring end := regexp(macro,regex_step,1);  
-    var charstring step := regexp(macro,regex_step,2);
-    
-    var Parameter_Macro r := {beginning := str2float(beginning),
-      end := str2float(end),
-      step := str2float(step)
-    };
-    
-    return r;
-  }
-  
-  //external function parseParameterMacrosList(charstring macro) return integerList;
+    import from ServiceProfiling_Types all;
+
+    //function f_setup_sfc(charstring service_name) runs on MANO {
+    //  Port.send( service_name );
+    //}
+
+    function f_create_starting_resource_config(template ServiceProfilingExperiment spe) return template ResourceConfigurations {
+        template ResourceConfigurations rcfgs := {}
+
+        for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
+            var integer next_item := sizeof(rcfgs) + 1;
+            rcfgs[next_item] := { function_id := valueof(spe.resourcecfgs[i].function_id),
+                                  resource_values := omit };
+
+            // Add all resource configs for this VNF
+            for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
+                rcfgs[next_item][j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
+                                         actual_value := spe.resourcecfgs[i].resource_macros[j].starting_value };
+            }
+        }
+
+        return rcfgs;
+    }
 }

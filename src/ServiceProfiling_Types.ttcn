@@ -22,7 +22,7 @@ module ServiceProfiling_Types {
 
   type record ResourceConfigurationMacro {
     charstring function_id,
-    ResourceMacros resource_macros
+    ResourceMacros resource_macros optional
     // vcpu, memory, storage...
     //charstring cpu_time,
     //charstring cpu_set,
