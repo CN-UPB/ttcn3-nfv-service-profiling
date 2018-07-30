@@ -1,5 +1,5 @@
 module ServiceProfiling_Types {
-  type set ServiceProfilingExperiment {
+  type record ServiceProfilingExperiment {
     charstring name,
     integer repetitions,
     integer profiling_timeout,
@@ -49,7 +49,7 @@ module ServiceProfiling_Types {
 
   type record of RessourceValue RessourceValues;
   
-  type set Agent {
+  type record Agent {
     charstring name,
     charstring connection_point,
     charstring image,

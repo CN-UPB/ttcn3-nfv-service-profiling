@@ -1,5 +1,6 @@
 module ServiceProfiling_Templates {
   import from ServiceProfiling_Types all;
+  import from ServiceProfiling_Templates_Agents all;
 
   template ResourceConfigurationMacros rcfg := {
     { function_id := "snort-vnf",
@@ -10,16 +11,7 @@ module ServiceProfiling_Templates {
     }
   };
 
-  template Agents agent_list := {
-     { name := "server",
-      connection_point := "snort_vnf:output",
-      image := "iperf3-ssh",
-      cmd := "iperf3 -s"},
-      { name := "client",
-      connection_point := "snort_vnf:input",
-      image := "iperf3-ssh",
-      cmd := "iperf3 -J -c 172.17.0.4"}
-  };
+  template Agents agent_list := { iperf3server, iperf3client };
 
   template ServiceProfilingExperiment spexperiment := {
     name := "serviceprofiling1",

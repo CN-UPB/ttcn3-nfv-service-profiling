@@ -83,14 +83,14 @@ ARCHIVE_DIR = backup
 #
 
 # TTCN-3 modules of this project:
-TTCN3_MODULES = ../src/ServiceProfiling_Functions.ttcn ../src/ServiceProfiling_PortType.ttcn ../src/ServiceProfiling_Templates.ttcn ../src/ServiceProfiling_Testcases.ttcn ../src/ServiceProfiling_Types.ttcn
+TTCN3_MODULES = ../src/ServiceProfiling_Functions.ttcn ../src/ServiceProfiling_PortType.ttcn ../src/ServiceProfiling_Templates_Agents.ttcn ../src/ServiceProfiling_Templates.ttcn ../src/ServiceProfiling_Testcases.ttcn ../src/ServiceProfiling_Types.ttcn
 
 # ASN.1 modules of this project:
 ASN1_MODULES =
 
 # C++ source & header files generated from the TTCN-3 & ASN.1 modules of
 # this project:
-GENERATED_SOURCES = ServiceProfiling_Functions.cc ServiceProfiling_PortType.cc ServiceProfiling_Templates.cc ServiceProfiling_Testcases.cc ServiceProfiling_Types.cc $(ASN1_MODULES:.asn=.cc)
+GENERATED_SOURCES = ServiceProfiling_Functions.cc ServiceProfiling_PortType.cc ServiceProfiling_Templates_Agents.cc ServiceProfiling_Templates.cc ServiceProfiling_Testcases.cc ServiceProfiling_Types.cc $(ASN1_MODULES:.asn=.cc)
 GENERATED_HEADERS = $(GENERATED_SOURCES:.cc=.hh)
 
 # C/C++ Source & header files of Test Ports, external functions and

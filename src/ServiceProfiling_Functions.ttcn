@@ -7,18 +7,20 @@ module ServiceProfiling_Functions {
     //}
 
     function f_create_starting_resource_config(template ServiceProfilingExperiment spe) return template ResourceConfigurations {
-        template ResourceConfigurations rcfgs := {}
+        var template ResourceConfigurations rcfgs := {}
 
         for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
-            var integer next_item := sizeof(rcfgs) + 1;
-            rcfgs[next_item] := { function_id := valueof(spe.resourcecfgs[i].function_id),
-                                  resource_values := omit };
-
+            var template RessourceValues rvalues := {}
+            
             // Add all resource configs for this VNF
             for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
-                rcfgs[next_item][j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
-                                         actual_value := spe.resourcecfgs[i].resource_macros[j].starting_value };
+                rvalues[j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
+                                         actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].start_value)) };
             }
+            
+            var integer next_item := sizeof(rcfgs) + 1;
+            rcfgs[next_item] := { function_id := valueof(spe.resourcecfgs[i].function_id),
+                                  resource_values := rvalues };
         }
 
         return rcfgs;
