@@ -82,4 +82,5 @@ module ServiceProfiling_Types {
   
   type record of integer integerList;
   
+  type record Cleanup_Request { };
 }

@@ -43,7 +43,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
     rest_username = "admin";
     rest_password = "admin";
 
-    manage_docker = false;
+    manage_docker = true;
 
     //sfc_service_instance_uuid = "";
     //sfc_service_uuid = "";
@@ -162,6 +162,17 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
     connectVnfToSfc(vnf_name, vnf_cp);
 }
 
+void ManoMsg::outgoing_send(const ServiceProfiling__Types::Cleanup__Request& /*send_par*/)
+{
+    log("Cleanup vim-emu!");
+
+    stopAllVNF();
+    //stopDockerContainer();
+    //startDockerContainer();
+
+    log("Cleaned up vim-emu. New vim-emu instance is running!");
+}
+
 void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
 {
     std::string vnf_name = std::string(((const char*)send_par.vnf()));
@@ -210,23 +221,34 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config
     std::string service_name = std::string(((const char*)send_par.service__name()));
     std::string vnf_name = std::string(((const char*)send_par.resourcecfg().function__id()));
 
+    // All the possible values that vim-emu supports
+    std::string vcpus, memory;
+
     // Resource configuration values
-    /*auto memory_size_start = float(((const float)send_par.resourcecfg().memory().start__value()));
-    auto memory_size_end = float(((const float)send_par.resourcecfg().memory().end__value()));
-    auto memory_size_step = float(((const float)send_par.resourcecfg().memory().step()));
-    auto vcpu_start_value = float(((const float)send_par.resourcecfg().vcpu().start__value()));
-    auto vcpu_end_value = float(((const float)send_par.resourcecfg().vcpu().end__value()));
-    auto vcpu_step = float(((const float)send_par.resourcecfg().vcpu().step()));*/
+    auto rvalues = (const ServiceProfiling__Types::RessourceValues)send_par.resourcecfg().resource__values();
+    for(int i = 0; i < rvalues.size_of() ; i++) {
+    	if(rvalues[i].name() == "vcpu") {
+    	    vcpus = rvalues[i].actual__value();
+    	} else if(rvalues[i].name() == "memory") {
+			memory = rvalues[i].actual__value();
+    	}
+    }
 
     std::vector<std::string> service_name_elements;
     boost::split(service_name_elements, service_name, boost::is_any_of("."));
 
     log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
-    std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
-    //std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
+	// TODO
+    //std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
+    std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
 
     log("Filename %s", filename.c_str());
+
+	std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vcpus + " " + memory + " 100000";
+	log("Command: %s", cmd.c_str());
+
+	std::system(cmd.c_str());
 
     //std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
 
@@ -443,10 +465,6 @@ void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
     }
 }
 
-/*void ManoMsg::performRequest(web::http::http_client, web::http::http_request, web::http::methods) {
-
-  }*/
-
 void ManoMsg::startDockerContainer() {
     if(!manage_docker) {
         return;
@@ -459,7 +477,7 @@ void ManoMsg::startDockerContainer() {
     int status = std::system(cmd.c_str());
 
     if(status < 0) {
-        TTCN_error("Could start docker container!");
+        TTCN_error("Could not start docker container!");
     }
 
     log("Started docker container");
@@ -475,7 +493,7 @@ void ManoMsg::stopDockerContainer() {
     int status = std::system(cmd.c_str());
 
     if(status < 0) {
-        TTCN_error("Could stop docker container!");
+        TTCN_error("Could not stop docker container!");
     }
 
     log("Stopped docker container");

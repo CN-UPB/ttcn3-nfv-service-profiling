@@ -8,19 +8,22 @@ module ServiceProfiling_Testcases {
     testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
         map(mtc:Port, system:Port);
 
-        // TODO
-        var template ResourceConfigurations starting_rcfgs := f_create_starting_resource_config(spe);
+        var template ResourceConfigurations resourcecfgs := f_create_starting_resource_config(spe);
+        log(resourcecfgs);
 
         for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
             for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
                 var ResourceMacro current_resource_macro := valueof(spe.resourcecfgs[i].resource_macros[j]);
 
-                for(var float start_value := valueof(current_resource_macro.start_value);
-                    start_value <= valueof(current_resource_macro.end_value);
-                    start_value := start_value + valueof(current_resource_macro.step)) {
+                for(var float new_value := valueof(current_resource_macro.start_value);
+                    new_value <= valueof(current_resource_macro.end_value);
+                    new_value := new_value + valueof(current_resource_macro.step)) {
 
-                        //template Set_Resource_Config resource_config_request := {spe.service_name, spe.resourcecfgs[0]};
-                        //Port.send(resource_config_request);
+                        // Set actual_value (index 1) to the new value
+                        resourcecfgs[i].resource_values[j] := { name:= resourcecfgs[i].resource_values[j].name, actual_value := float2str(new_value) }
+
+                        template Set_Resource_Config resource_config_request := {spe.service_name, resourcecfgs[i]};
+                        Port.send(resource_config_request);
 
                         template Setup_SFC setup_sfc_req := { spe.service_name }
                         Port.send(setup_sfc_req);
@@ -31,13 +34,18 @@ module ServiceProfiling_Testcases {
                         template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
                         Port.send(add_vnf_request2);
 
+                        // TODO: There may be only one Agent
                         template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name}
                         Port.send(start_cmd_request1);
 
                         template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name}
                         Port.send(start_cmd_request2);
 
+                        // TODO: Save output
                         Port.receive;
+
+                        template Cleanup_Request cleanup_req := {}
+                        Port.send(cleanup_req);
                 }
             }
         }

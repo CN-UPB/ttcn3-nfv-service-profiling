@@ -18,10 +18,12 @@ module ServiceProfiling_Functions {
                                          actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].start_value)) };
             }
             
-            var integer next_item := sizeof(rcfgs) + 1;
+            var integer next_item := sizeof(rcfgs);
             rcfgs[next_item] := { function_id := valueof(spe.resourcecfgs[i].function_id),
                                   resource_values := rvalues };
         }
+
+        log("Created the follwing starting template: ", rcfgs);
 
         return rcfgs;
     }

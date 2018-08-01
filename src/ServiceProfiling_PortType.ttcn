@@ -7,6 +7,7 @@ module ServiceProfiling_PortType {
     out Set_Resource_Config;
     out Start_CMD;
     in Start_CMD_reply;
+    out Cleanup_Request;
   };
   
   type component MANO {
