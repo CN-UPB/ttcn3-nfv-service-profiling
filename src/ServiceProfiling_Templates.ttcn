@@ -11,7 +11,10 @@ module ServiceProfiling_Templates {
     }
   };
 
-  template Agents agent_list := { iperf3server, iperf3client };
+  template Agents agent_list := {
+  	iperf3server("snort_vnf:output"),
+	iperf3client("snort_vnf:input")
+  };
 
   template ServiceProfilingExperiment spexperiment := {
     name := "serviceprofiling1",

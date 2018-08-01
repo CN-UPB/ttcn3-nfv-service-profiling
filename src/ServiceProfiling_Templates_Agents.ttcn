@@ -1,18 +1,20 @@
 module ServiceProfiling_Templates_Agents {
     import from ServiceProfiling_Types all;
 
-    template Agent iperf3server := {
+    template Agent iperf3server(charstring cp) := {
         name := "server",
-        connection_point := "snort_vnf:output",
+        connection_point := cp,
         image := "iperf3-ssh",
         cmd := "iperf3 -s"
     };
 
-    template Agent iperf3client := {
+    template Agent iperf3client(charstring cp) := {
         name := "client",
-        connection_point := "snort_vnf:input",
+        connection_point := cp,
         image := "iperf3-ssh",
-        cmd := "iperf3 -J -c 172.17.0.4"
+        cmd := "iperf3 -J -c ${ip4:server}",
+        //cmd := "iperf3 -J -c 172.17.0.4",
+	output_parser := "iperf3-json-bits_per_second"
     };
 
 }
