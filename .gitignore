@@ -1,7 +1,8 @@
 *.log
 *.o
 src/compile
-src/ManoMsg.d
+src/*.d
+src/*.o
 build/*.cc
 build/*.hh
 build/*.d
