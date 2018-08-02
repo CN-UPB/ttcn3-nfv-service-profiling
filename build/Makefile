@@ -51,7 +51,7 @@ CPPFLAGS = -D$(PLATFORM) -I$(TTCN3_DIR)/include -I../src/ -I.
 CXXDEPFLAGS = -MM
 
 # Flags for the C++ compiler:
-CXXFLAGS = -Wall  
+CXXFLAGS = -Wall -std=c++14
 
 # Flags for the linker:
 LDFLAGS = 

@@ -19,6 +19,7 @@
 #include <boost/process.hpp>
 #include <chrono>
 #include <thread>
+#include <regex>
 
 
 using namespace utility;
@@ -178,6 +179,18 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
     std::string vnf_name = std::string(((const char*)send_par.vnf()));
     std::string cmd = std::string(((const char*)send_par.cmd()));
 
+    // Replace macros in commands
+    std::smatch match;
+    std::regex IP4("\\$\\{IP4:(.*)\\}");
+    if(std::regex_search(cmd, match, IP4)) {
+        std::ssub_match sub_match = match[1];
+        std::string ip4_name = sub_match.str();
+
+        auto ip4_address = start_local_program("docker inspect -f \"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\" mn." + ip4_name);
+        std::string replacement = "$`" + ip4_address[0] + "$'";
+        cmd = regex_replace(cmd, IP4, replacement);
+    }
+
     log("Starting command %s on vnf %s", cmd.c_str(), vnf_name.c_str());
 
     std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
@@ -196,7 +209,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
     //start_local_program("docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mn.server", server_address);
 
     // TODO: Configureable password
-    std::string command = "sshpass -v -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
+    std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
 
     if(vnf_name == "server") {
         auto command_stdout = start_local_program(command, true);
@@ -204,12 +217,12 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
         auto command_stdout = start_local_program(command);
 
         std::string command_stdout_string;
-        
+
         for(const auto &line : command_stdout) {
             command_stdout_string += line;
             command_stdout_string += "\n";
         }
-        
+
         ServiceProfiling__Types::Start__CMD__reply cmd_reply;
         cmd_reply.cmd__reply() = CHARSTRING(command_stdout_string.c_str());
         incoming_message(cmd_reply);
@@ -227,11 +240,11 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config
     // Resource configuration values
     auto rvalues = (const ServiceProfiling__Types::RessourceValues)send_par.resourcecfg().resource__values();
     for(int i = 0; i < rvalues.size_of() ; i++) {
-    	if(rvalues[i].name() == "vcpu") {
-    	    vcpus = rvalues[i].actual__value();
-    	} else if(rvalues[i].name() == "memory") {
-			memory = rvalues[i].actual__value();
-    	}
+        if(rvalues[i].name() == "vcpu") {
+            vcpus = rvalues[i].actual__value();
+        } else if(rvalues[i].name() == "memory") {
+            memory = rvalues[i].actual__value();
+        }
     }
 
     std::vector<std::string> service_name_elements;
@@ -239,16 +252,16 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config
 
     log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
-	// TODO
+    // TODO
     //std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
     std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
 
     log("Filename %s", filename.c_str());
 
-	std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vcpus + " " + memory + " 100000";
-	log("Command: %s", cmd.c_str());
+    std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vcpus + " " + memory + " 100000";
+    log("Command: %s", cmd.c_str());
 
-	std::system(cmd.c_str());
+    std::system(cmd.c_str());
 
     //std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
 

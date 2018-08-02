@@ -12,9 +12,8 @@ module ServiceProfiling_Templates_Agents {
         name := "client",
         connection_point := cp,
         image := "iperf3-ssh",
-        cmd := "iperf3 -J -c ${ip4:server}",
-        //cmd := "iperf3 -J -c 172.17.0.4",
-	output_parser := "iperf3-json-bits_per_second"
+        cmd := "iperf3 -J -c ${IP4:server}",
+        output_parser := "iperf3-json-bits_per_second"
     };
 
 }
