@@ -8,6 +8,7 @@
 // add your member functions here.
 
 #include "ManoMsg.hh"
+#include "OutputParser.hh"
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
 #include <iostream>
@@ -179,6 +180,13 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
     std::string vnf_name = std::string(((const char*)send_par.vnf()));
     std::string cmd = std::string(((const char*)send_par.cmd()));
 
+    OPTIONAL<CHARSTRING> output_parser_optional = ((const OPTIONAL<CHARSTRING>)send_par.output__parser());
+    std::string output_parser;
+
+    if(output_parser_optional.is_present()) {
+        output_parser = output_parser_optional();
+    }
+
     // Replace macros in commands
     std::smatch match;
     std::regex IP4("\\$\\{IP4:(.*)\\}");
@@ -223,8 +231,10 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
             command_stdout_string += "\n";
         }
 
+        auto metric = OutputParser::parse(command_stdout_string, output_parser);
+
         ServiceProfiling__Types::Start__CMD__reply cmd_reply;
-        cmd_reply.cmd__reply() = CHARSTRING(command_stdout_string.c_str());
+        cmd_reply.metric() = CHARSTRING(metric.c_str());
         incoming_message(cmd_reply);
     }
 }

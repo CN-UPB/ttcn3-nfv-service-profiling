@@ -35,10 +35,10 @@ module ServiceProfiling_Testcases {
                         Port.send(add_vnf_request2);
 
                         // TODO: There may be only one Agent
-                        template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name}
+                        template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name, omit};
                         Port.send(start_cmd_request1);
 
-                        template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name}
+                        template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
                         Port.send(start_cmd_request2);
 
                         // TODO: Save output

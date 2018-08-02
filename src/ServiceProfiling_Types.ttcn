@@ -72,8 +72,8 @@ module ServiceProfiling_Types {
     ResourceConfiguration resourcecfg
   };
 
-  type record Start_CMD { charstring cmd, charstring vnf };
-  type record Start_CMD_reply { charstring cmd_reply };
+  type record Start_CMD { charstring cmd, charstring vnf, charstring output_parser optional };
+  type record Start_CMD_reply { charstring metric };
   
   type record Parameter_Macro {
     float min,
