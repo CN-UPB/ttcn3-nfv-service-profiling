@@ -7,4 +7,5 @@ build/*.cc
 build/*.hh
 build/*.d
 build/compile
-build/nfv-service-profiling
+build/tsp-profiling
+build/config.cfg

@@ -1,11 +1,10 @@
-module ServiceProfiling_Testcases {
+module TSP_Testcases {
 
-    import from ServiceProfiling_Types all;
-    import from ServiceProfiling_PortType all;
-    import from ServiceProfiling_Functions all;
-    import from ServiceProfiling_Templates all;
+    import from TSP_Types all;
+    import from TSP_PortType all;
+    import from TSP_Functions all;
 
-    testcase SimpleServiceProfiling(template ServiceProfilingExperiment spe) runs on MANO system MANO {
+    testcase SimpleTSP(template TSP_Experiment spe) runs on MANO system MANO {
         map(mtc:Port, system:Port);
 
         var template ResourceConfigurations resourcecfgs := f_create_starting_resource_config(spe);
@@ -15,8 +14,8 @@ module ServiceProfiling_Testcases {
             for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
                 var ResourceMacro current_resource_macro := valueof(spe.resourcecfgs[i].resource_macros[j]);
 
-                for(var float new_value := valueof(current_resource_macro.start_value);
-                    new_value <= valueof(current_resource_macro.end_value);
+                for(var float new_value := valueof(current_resource_macro.min);
+                    new_value <= valueof(current_resource_macro.max);
                     new_value := new_value + valueof(current_resource_macro.step)) {
 
                         // Set actual_value (index 1) to the new value
@@ -53,9 +52,5 @@ module ServiceProfiling_Testcases {
 
         setverdict ( pass );
         stop
-    }
-
-    control {
-        execute(SimpleServiceProfiling(spexperiment));
     }
 }

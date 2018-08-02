@@ -1,5 +1,5 @@
-module ServiceProfiling_Types {
-  type record ServiceProfilingExperiment {
+module TSP_Types {
+  type record TSP_Experiment {
     charstring name,
     integer repetitions,
     integer profiling_timeout,
@@ -35,8 +35,8 @@ module ServiceProfiling_Types {
 
   type record ResourceMacro {
     charstring name,
-    float start_value,
-    float end_value,
+    float min,
+    float max,
     float step
   }
 

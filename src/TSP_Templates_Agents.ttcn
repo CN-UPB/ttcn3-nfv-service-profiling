@@ -1,5 +1,5 @@
-module ServiceProfiling_Templates_Agents {
-    import from ServiceProfiling_Types all;
+module TSP_Templates_Agents {
+    import from TSP_Types all;
 
     template Agent iperf3server(charstring cp) := {
         name := "server",

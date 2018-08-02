@@ -10,11 +10,11 @@
 #ifndef ManoMsg_HH
 #define ManoMsg_HH
 
-#include "ServiceProfiling_PortType.hh"
+#include "TSP_PortType.hh"
 #include <string>
 #include <vector>
 
-namespace ServiceProfiling__PortType {
+namespace TSP__PortType {
 
 class ManoMsg : public ManoMsg_BASE {
 public:
@@ -70,11 +70,11 @@ protected:
 	void user_start();
 	void user_stop();
 
-	void outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par);
-	void outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par);
-	void outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par);
-	void outgoing_send(const ServiceProfiling__Types::Set__Resource__Config& send_par);
-	void outgoing_send(const ServiceProfiling__Types::Cleanup__Request& send_par);
+	void outgoing_send(const TSP__Types::Setup__SFC& send_par);
+	void outgoing_send(const TSP__Types::Add__VNF& send_par);
+	void outgoing_send(const TSP__Types::Start__CMD& send_par);
+	void outgoing_send(const TSP__Types::Set__Resource__Config& send_par);
+	void outgoing_send(const TSP__Types::Cleanup__Request& send_par);
 };
 
 } /* end of namespace */

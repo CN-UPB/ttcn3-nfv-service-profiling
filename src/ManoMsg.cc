@@ -29,7 +29,7 @@ using namespace web::http;
 using namespace web::http::client;
 using namespace concurrency::streams;
 
-namespace ServiceProfiling__PortType {
+namespace TSP__PortType {
 
 ManoMsg::ManoMsg(const char *par_port_name)
 	: ManoMsg_BASE(par_port_name)
@@ -135,7 +135,7 @@ void ManoMsg::user_stop()
 
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 {
     if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
         stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
@@ -152,7 +152,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Setup__SFC& send_par)
     log("SFC created and running");
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Add__VNF& send_par)
 {
     std::string vnf_name = std::string(((const char*)send_par.name()));
     std::string vnf_cp = std::string(((const char*)send_par.connection__point()));
@@ -164,7 +164,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Add__VNF& send_par)
     connectVnfToSfc(vnf_name, vnf_cp);
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Cleanup__Request& /*send_par*/)
+void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 {
     log("Cleanup vim-emu!");
 
@@ -175,7 +175,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Cleanup__Request& /*s
     log("Cleaned up vim-emu. New vim-emu instance is running!");
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 {
     std::string vnf_name = std::string(((const char*)send_par.vnf()));
     std::string cmd = std::string(((const char*)send_par.cmd()));
@@ -233,13 +233,13 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Start__CMD& send_par)
 
         auto metric = OutputParser::parse(command_stdout_string, output_parser);
 
-        ServiceProfiling__Types::Start__CMD__reply cmd_reply;
+        TSP__Types::Start__CMD__reply cmd_reply;
         cmd_reply.metric() = CHARSTRING(metric.c_str());
         incoming_message(cmd_reply);
     }
 }
 
-void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Set__Resource__Config& send_par)
 {
     std::string service_name = std::string(((const char*)send_par.service__name()));
     std::string vnf_name = std::string(((const char*)send_par.resourcecfg().function__id()));
@@ -248,7 +248,7 @@ void ManoMsg::outgoing_send(const ServiceProfiling__Types::Set__Resource__Config
     std::string vcpus, memory;
 
     // Resource configuration values
-    auto rvalues = (const ServiceProfiling__Types::RessourceValues)send_par.resourcecfg().resource__values();
+    auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
     for(int i = 0; i < rvalues.size_of() ; i++) {
         if(rvalues[i].name() == "vcpu") {
             vcpus = rvalues[i].actual__value();

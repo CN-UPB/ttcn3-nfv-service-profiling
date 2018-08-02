@@ -21,7 +21,7 @@
 #
 # Do NOT touch this line...
 #
-.PHONY: all shared_objects executable library objects check port clean dep archive
+.PHONY: all shared_objects executable library objects check port clean dep archive copy_cfg
 
 .SUFFIXES: .d
 
@@ -45,7 +45,7 @@ PLATFORM = LINUX
 CXX = g++ 
 
 # Flags for the C++ preprocessor (and makedepend as well):
-CPPFLAGS = -D$(PLATFORM) -I$(TTCN3_DIR)/include -I../src/ -I.
+CPPFLAGS = -D$(PLATFORM) -I$(TTCN3_DIR)/include -I../src/ -I../src/TSPF/ -I.
 
 # Flags for dependency generation
 CXXDEPFLAGS = -MM
@@ -83,14 +83,14 @@ ARCHIVE_DIR = backup
 #
 
 # TTCN-3 modules of this project:
-TTCN3_MODULES = ../src/ServiceProfiling_Functions.ttcn ../src/ServiceProfiling_PortType.ttcn ../src/ServiceProfiling_Templates_Agents.ttcn ../src/ServiceProfiling_Templates.ttcn ../src/ServiceProfiling_Testcases.ttcn ../src/ServiceProfiling_Types.ttcn
+TTCN3_MODULES = ../src/TSP_Functions.ttcn ../src/TSP_PortType.ttcn ../src/TSP_Templates_Agents.ttcn ../src/TSP_Testcases.ttcn ../src/TSP_Types.ttcn ../src/TSPF/TSPF_snort_iperf3.ttcn
 
 # ASN.1 modules of this project:
 ASN1_MODULES =
 
 # C++ source & header files generated from the TTCN-3 & ASN.1 modules of
 # this project:
-GENERATED_SOURCES = ServiceProfiling_Functions.cc ServiceProfiling_PortType.cc ServiceProfiling_Templates_Agents.cc ServiceProfiling_Templates.cc ServiceProfiling_Testcases.cc ServiceProfiling_Types.cc $(ASN1_MODULES:.asn=.cc)
+GENERATED_SOURCES = TSP_Functions.cc TSP_PortType.cc TSP_Testcases.cc TSP_Types.cc TSP_Templates_Agents.cc TSPF_snort_iperf3.cc $(ASN1_MODULES:.asn=.cc)
 GENERATED_HEADERS = $(GENERATED_SOURCES:.cc=.hh)
 
 # C/C++ Source & header files of Test Ports, external functions and
@@ -112,7 +112,7 @@ DEPFILES = $(USER_OBJECTS:.o=.d)  $(GENERATED_OBJECTS:.o=.d)
 OTHER_FILES = ../src/config.cfg Makefile
 
 # The name of the executable test suite:
-EXECUTABLE = nfv-service-profiling
+EXECUTABLE = tsp-profiling 
 
 
 
@@ -134,7 +134,7 @@ WIN32_LIBS = -lxml2
 # Rules for building the executable...
 #
 
-all: $(TARGET) ;
+all: $(TARGET) copy_cfg;
 
 executable: $(EXECUTABLE) ;
 
@@ -176,7 +176,7 @@ compile: $(TTCN3_MODULES)  $(ASN1_MODULES)
 
 clean:
 	-$(RM) $(EXECUTABLE) $(LIBRARY) $(OBJECTS) $(GENERATED_HEADERS) \
-	$(GENERATED_SOURCES) compile $(DEPFILES) \
+	$(GENERATED_SOURCES) compile $(DEPFILES) config.cfg \
 	tags *.log
 
 dep: $(GENERATED_SOURCES) $(USER_SOURCES) ; 
@@ -206,4 +206,5 @@ diag:
 #
 # Add your rules here if necessary...
 #
-
+copy_cfg:
+	cp ../src/config.cfg .

@@ -1,12 +1,12 @@
-module ServiceProfiling_Functions {
+module TSP_Functions {
 
-    import from ServiceProfiling_Types all;
+    import from TSP_Types all;
 
     //function f_setup_sfc(charstring service_name) runs on MANO {
     //  Port.send( service_name );
     //}
 
-    function f_create_starting_resource_config(template ServiceProfilingExperiment spe) return template ResourceConfigurations {
+    function f_create_starting_resource_config(template TSP_Experiment spe) return template ResourceConfigurations {
         var template ResourceConfigurations rcfgs := {}
 
         for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
@@ -15,7 +15,7 @@ module ServiceProfiling_Functions {
             // Add all resource configs for this VNF
             for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
                 rvalues[j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
-                                         actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].start_value)) };
+                                         actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].min)) };
             }
             
             var integer next_item := sizeof(rcfgs);
