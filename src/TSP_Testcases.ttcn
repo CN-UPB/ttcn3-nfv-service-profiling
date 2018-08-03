@@ -7,44 +7,45 @@ module TSP_Testcases {
     testcase SimpleTSP(template TSP_Experiment spe) runs on MANO system MANO {
         map(mtc:Port, system:Port);
 
-        var template ResourceConfigurations resourcecfgs := f_create_starting_resource_config(spe);
-        log(resourcecfgs);
+        var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
+        log(paramcfgs);
 
-        for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
-            for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
-                var ResourceMacro current_resource_macro := valueof(spe.resourcecfgs[i].resource_macros[j]);
+        for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
+            // vCPUs
+            for(var integer i := 0; i < sizeof(spe.paramcfgs[current_param].vcpus); i := i + 1) {
+                //var  current_param_macro := valueof(spe.paramcfgs[current_param].param_macros[]);
+                paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[i];
 
-                for(var float new_value := valueof(current_resource_macro.min);
-                    new_value <= valueof(current_resource_macro.max);
-                    new_value := new_value + valueof(current_resource_macro.step)) {
+                // Memory
+                for(var integer j := 0; j < sizeof(spe.paramcfgs[current_param].memory); j := j + 1) {
+                    paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[j];
 
-                        // Set actual_value (index 1) to the new value
-                        resourcecfgs[i].resource_values[j] := { name:= resourcecfgs[i].resource_values[j].name, actual_value := float2str(new_value) }
+                    //paramcfgs[current_param].param_values[j] := { name:= paramcfgs[i].param_values[j].name, actual_value := float2str(new_value) }
 
-                        template Set_Resource_Config resource_config_request := {spe.service_name, resourcecfgs[i]};
-                        Port.send(resource_config_request);
+                    template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs[current_param]};
+                    Port.send(param_config_request);
 
-                        template Setup_SFC setup_sfc_req := { spe.service_name }
-                        Port.send(setup_sfc_req);
+                    template Setup_SFC setup_sfc_req := { spe.service_name }
+                    Port.send(setup_sfc_req);
 
-                        template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
-                        Port.send(add_vnf_request1);
+                    template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
+                    Port.send(add_vnf_request1);
 
-                        template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
-                        Port.send(add_vnf_request2);
+                    template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
+                    Port.send(add_vnf_request2);
 
-                        // TODO: There may be only one Agent
-                        template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name, omit};
-                        Port.send(start_cmd_request1);
+                    // TODO: There may be only one Agent
+                    template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name, omit};
+                    Port.send(start_cmd_request1);
 
-                        template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
-                        Port.send(start_cmd_request2);
+                    template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
+                    Port.send(start_cmd_request2);
 
-                        // TODO: Save output
-                        Port.receive;
+                    // TODO: Save output
+                    Port.receive;
 
-                        template Cleanup_Request cleanup_req := {}
-                        Port.send(cleanup_req);
+                    template Cleanup_Request cleanup_req := {}
+                    Port.send(cleanup_req);
                 }
             }
         }

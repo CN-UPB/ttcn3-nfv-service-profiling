@@ -4,7 +4,7 @@ module TSP_PortType {
   type port ManoMsg message {
     out Setup_SFC;
     out Add_VNF;
-    out Set_Resource_Config;
+    out Set_Parameter_Config;
     out Start_CMD;
     in Start_CMD_reply;
     out Cleanup_Request;

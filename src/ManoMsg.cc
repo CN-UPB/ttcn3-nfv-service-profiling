@@ -243,26 +243,28 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 }
 
 /**
- * Handles the send operation for Set_Resource_Config requests
- * @param send_par Set_Resource_Config request (e.g. service name, function id and resource config
+ * Handles the send operation for Set_Parameter_Config requests
+ * @param send_par Set_Parameter_Config request (e.g. service name, function id and resource config
  */
-void ManoMsg::outgoing_send(const TSP__Types::Set__Resource__Config& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
 {
     std::string service_name = std::string(((const char*)send_par.service__name()));
-    std::string vnf_name = std::string(((const char*)send_par.resourcecfg().function__id()));
+    std::string vnf_name = std::string(((const char*)send_par.paramcfg().function__id()));
 
     // All the possible values that vim-emu supports
-    std::string vcpus, memory;
+    int vcpus = (const int)send_par.paramcfg().vcpus();
+    int memory = (const int)send_par.paramcfg().memory();
+    int storage = (const int)send_par.paramcfg().storage();
 
-    // Resource configuration values
-    auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
-    for(int i = 0; i < rvalues.size_of() ; i++) {
-        if(rvalues[i].name() == "vcpu") {
-            vcpus = rvalues[i].actual__value();
-        } else if(rvalues[i].name() == "memory") {
-            memory = rvalues[i].actual__value();
-        }
-    }
+    // Additional parameter configuration values
+    //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
+    //for(int i = 0; i < rvalues.size_of() ; i++) {
+    //    if(rvalues[i].name() == "vcpu") {
+    //        vcpus = rvalues[i].actual__value();
+    //    } else if(rvalues[i].name() == "memory") {
+    //        memory = rvalues[i].actual__value();
+    //    }
+    //}
 
     std::vector<std::string> service_name_elements;
     boost::split(service_name_elements, service_name, boost::is_any_of("."));
@@ -275,7 +277,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Resource__Config& send_par)
 
     log("Filename %s", filename.c_str());
 
-    std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vcpus + " " + memory + " 100000";
+    std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
     log("Command: %s", cmd.c_str());
 
     std::system(cmd.c_str());

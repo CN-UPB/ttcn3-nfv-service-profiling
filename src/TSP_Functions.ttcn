@@ -1,30 +1,43 @@
 module TSP_Functions {
 
     import from TSP_Types all;
+    import from TSP_PortType all;
 
     //function f_setup_sfc(charstring service_name) runs on MANO {
     //  Port.send( service_name );
     //}
 
-    function f_create_starting_resource_config(template TSP_Experiment spe) return template ResourceConfigurations {
-        var template ResourceConfigurations rcfgs := {}
+    function f_create_starting_parameter_config(template TSP_Experiment spe) return template ParameterConfigurations {
+        var template ParameterConfigurations rcfgs := {};
 
-        for(var integer i := 0; i < sizeof(spe.resourcecfgs); i := i + 1) {
-            var template RessourceValues rvalues := {}
+        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+            var integer vcpus := valueof(spe.paramcfgs[i].vcpus[0]);
+            var integer memory := valueof(spe.paramcfgs[i].memory[0]);
+            var integer storage := valueof(spe.paramcfgs[i].storage[0]);
+
+            var template ParameterValues additional_param_values := {}
             
             // Add all resource configs for this VNF
-            for(var integer j := 0; j < sizeof(spe.resourcecfgs[i].resource_macros); j := j + 1) {
-                rvalues[j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
-                                         actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].min)) };
-            }
+            //for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+               // rvalues[j] := { name := spe.resourcecfgs[i].resource_macros[j].name,
+               //                         actual_value := float2str(valueof(spe.resourcecfgs[i].resource_macros[j].min)) };
+            //}
             
             var integer next_item := sizeof(rcfgs);
-            rcfgs[next_item] := { function_id := valueof(spe.resourcecfgs[i].function_id),
-                                  resource_values := rvalues };
+            rcfgs[next_item] := { function_id := valueof(spe.paramcfgs[i].function_id),
+                                  vcpus := vcpus,
+                                  memory := memory,
+                                  storage := storage,
+                                  additional_parameters := additional_param_values
+                              };
         }
 
-        log("Created the follwing starting template: ", rcfgs);
+        log("Created the following starting template: ", rcfgs);
 
         return rcfgs;
     }
+
+    function f_run_service_profiling() runs on MANO {
+    }
 }
+

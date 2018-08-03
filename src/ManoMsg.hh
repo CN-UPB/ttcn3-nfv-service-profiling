@@ -64,7 +64,7 @@ protected:
 	void outgoing_send(const TSP__Types::Setup__SFC& send_par);
 	void outgoing_send(const TSP__Types::Add__VNF& send_par);
 	void outgoing_send(const TSP__Types::Start__CMD& send_par);
-	void outgoing_send(const TSP__Types::Set__Resource__Config& send_par);
+	void outgoing_send(const TSP__Types::Set__Parameter__Config& send_par);
 	void outgoing_send(const TSP__Types::Cleanup__Request& send_par);
 };
 

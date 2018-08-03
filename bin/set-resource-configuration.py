@@ -13,7 +13,7 @@ def main(filepath, vcpus, mem, storage):
             yaml_dict["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size"] = int(float(mem))
             yaml_dict["virtual_deployment_units"][0]["resource_requirements"]["storage"]["size"] = int(float(storage))
             yaml_dict["virtual_deployment_units"][0]["resource_requirements"]["memory"]["size_unit"] = "MB"
-            yaml_dict["virtual_deployment_units"][0]["resource_requirements"]["storage"]["size_unit"] = "MB"
+            yaml_dict["virtual_deployment_units"][0]["resource_requirements"]["storage"]["size_unit"] = "GB"
             with io.open(filepath, 'w', encoding='utf8') as outfile:
                 ruamel.yaml.dump(yaml_dict, outfile, Dumper=ruamel.yaml.RoundTripDumper, allow_unicode=True)
             return 0

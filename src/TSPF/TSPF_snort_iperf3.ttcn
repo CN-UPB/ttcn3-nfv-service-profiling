@@ -3,13 +3,17 @@ module TSPF_snort_iperf3 {
     import from TSP_Templates_Agents all;
     import from TSP_Testcases all;
 
-    template ResourceConfigurationMacros rcfg := {
+    template ParameterConfigurationMacros paramcfg := {
         {
             function_id := "snort-vnf",
-            resource_macros := {
-                {"vcpu", 1.0, 2.0, 1.0},
-                {"memory", 64.0, 1024.0, 64.0}
-            }
+            vcpus := { 1,2,3,4 },
+            memory := { 256, 512, 1024 },
+            storage := { 10 }
+            //additional_parameters := {
+            //    {"numa_nodes", 1.0, 2.0, 1.0},
+            //    {"cpu_bw", 64.0, 1024.0, 64.0},
+            //    {"sriov", {0,1}}
+            //}
         }
     };
 
@@ -23,8 +27,9 @@ module TSPF_snort_iperf3 {
         repetitions := 10,
         profiling_timeout := 300,
         service_name := "sonata-snort-service.son",
-        resourcecfgs := rcfg,
-        agents := agent_list
+        paramcfgs := paramcfg,
+        agents := agent_list,
+        monitors := omit
     };
 
     control {
