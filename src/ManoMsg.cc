@@ -230,7 +230,10 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
     std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
 
     if(output_parser.empty()) {
-        boost::process::spawn(command);
+        boost::process::spawn(command,
+                boost::process::std_in.close(),
+                boost::process::std_out > boost::process::null,
+                boost::process::std_err > boost::process::null);
     } else {
         auto command_stdout = start_local_program(command);
 
@@ -244,47 +247,56 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
 /**
  * Handles the send operation for Set_Parameter_Config requests
- * @param send_par Set_Parameter_Config request (e.g. service name, function id and resource config
+ * @param send_par Set_Parameter_Config request (e.g. service name and parameter configs)
  */
 void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
 {
     std::string service_name = std::string(((const char*)send_par.service__name()));
-    std::string vnf_name = std::string(((const char*)send_par.paramcfg().function__id()));
+    auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfg());
 
-    // All the possible values that vim-emu supports
-    int vcpus = (const int)send_par.paramcfg().vcpus();
-    int memory = (const int)send_par.paramcfg().memory();
-    int storage = (const int)send_par.paramcfg().storage();
+    for(int i = 0; i < parameters.lengthof(); i++) {
+        std::string vnf_name = (const char*)parameters[i].function__id();
 
-    // Additional parameter configuration values
-    //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
-    //for(int i = 0; i < rvalues.size_of() ; i++) {
-    //    if(rvalues[i].name() == "vcpu") {
-    //        vcpus = rvalues[i].actual__value();
-    //    } else if(rvalues[i].name() == "memory") {
-    //        memory = rvalues[i].actual__value();
-    //    }
-    //}
+        // All main values that vim-emu supports
+        int vcpus = (const int)parameters[i].vcpus();
+        int memory = (const int)parameters[i].memory();
+        int storage = (const int)parameters[i].storage();
 
-    std::vector<std::string> service_name_elements;
-    boost::split(service_name_elements, service_name, boost::is_any_of("."));
+        // Additional parameter configuration values
+        //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
+        //for(int i = 0; i < rvalues.size_of() ; i++) {
+        //    if(rvalues[i].name() == "vcpu") {
+        //        vcpus = rvalues[i].actual__value();
+        //    } else if(rvalues[i].name() == "memory") {
+        //        memory = rvalues[i].actual__value();
+        //    }
+        //}
 
-    log("Setting resource configuration of VNF %s", vnf_name.c_str());
+        std::vector<std::string> service_name_elements;
+        boost::split(service_name_elements, service_name, boost::is_any_of("."));
 
-    // TODO
-    //std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
-    std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
+        log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
-    log("Filename %s", filename.c_str());
+        // TODO
+        //std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
+        std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
 
-    std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
-    log("Command: %s", cmd.c_str());
+        log("Filename %s", filename.c_str());
 
-    std::system(cmd.c_str());
+        // Change the Parameters
+        std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
+        log("Command: %s", cmd.c_str());
 
-    //std::system("son-package --project sonata-snort-service-emu -n sonata-snort-service");
+        std::system(cmd.c_str());
+    }
 
-    log("Setting resource configuration of VNF %s completed", vnf_name.c_str());
+    // Create the service package
+    boost::process::spawn("son-package --project /home/dark/son-examples/service-projects/sonata-snort-service-emu -n sonata-snort-service",
+            boost::process::std_in.close(),
+            boost::process::std_out > boost::process::null,
+            boost::process::std_err > boost::process::null);
+
+    log("Setting resource configuration of SFC %s completed", service_name.c_str());
 }
 
 /**
@@ -581,7 +593,7 @@ std::string ManoMsg::start_local_program(std::string command) {
 
     boost::process::child c(command,
             boost::process::std_in.close(),
-            boost::process::std_out > data, //so it can be written without anything
+            boost::process::std_out > data,
             boost::process::std_err > boost::process::null,
             ios);
 

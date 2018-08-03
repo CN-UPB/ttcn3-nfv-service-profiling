@@ -89,7 +89,7 @@ GENERATED_HEADERS = $(GENERATED_SOURCES:.cc=.hh)
 
 # C/C++ Source & header files of Test Ports, external functions and
 # other modules:
-USER_SOURCES = ../src/ManoMsg.cc ../src/OutputParser.cc
+USER_SOURCES = ../src/ManoMsg.cc ../src/OutputParser.cc ../src/Reporter.cc
 USER_HEADERS = $(USER_SOURCES:.cc=.hh)
 
 # Object files of this project that are needed for the executable test suite:

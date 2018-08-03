@@ -82,7 +82,7 @@ module TSP_Types {
 
   type record Set_Parameter_Config {
       charstring service_name,
-      ParameterConfiguration paramcfg 
+      ParameterConfigurations paramcfg 
   };
 
   type record Start_CMD { charstring cmd, charstring vnf, charstring output_parser optional };
@@ -97,4 +97,9 @@ module TSP_Types {
   type record of integer integerList;
 
   type record Cleanup_Request { };
+
+  type record Save_Metric {
+      TSP_Experiment experiment,
+      charstring metric
+  }
 }

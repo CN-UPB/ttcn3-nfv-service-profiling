@@ -9,9 +9,14 @@ module TSP_PortType {
     in Start_CMD_reply;
     out Cleanup_Request;
   };
+
+  type port Reporter message {
+      out Save_Metric;
+  }
   
   type component MANO {
-    port ManoMsg Port;
+    port ManoMsg Mano;
+    port Reporter Report;
   };
 
 }
