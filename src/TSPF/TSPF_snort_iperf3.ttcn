@@ -7,7 +7,7 @@ module TSPF_snort_iperf3 {
         {
             function_id := "snort-vnf",
             vcpus := { 1,2,3,4 },
-            memory := { 256, 512, 1024 },
+            memory := { 1024, 2048, 4096 },
             storage := { 10 }
             //additional_parameters := {
             //    {"numa_nodes", 1.0, 2.0, 1.0},

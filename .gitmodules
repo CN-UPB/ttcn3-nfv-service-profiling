@@ -1,0 +1,3 @@
+[submodule "external/son-examples"]
+	path = external/son-examples
+	url = https://github.com/sonata-nfv/son-examples.git

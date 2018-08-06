@@ -6,6 +6,7 @@ module TSP_Testcases {
 
     testcase SimpleTSP(template TSP_Experiment spe) runs on MANO system MANO {
         map(mtc:Mano, system:Mano);
+        map(mtc:Report, system:Report);
 
         var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
         log(paramcfgs);
@@ -41,8 +42,19 @@ module TSP_Testcases {
                     template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
                     Mano.send(start_cmd_request2);
 
+                    var Start_CMD_reply cmd_reply := {};
                     // TODO: Save output
-                    Mano.receive;
+                    var charstring metric;
+                    alt {
+                        [] Mano.receive(Start_CMD_reply:?) -> value cmd_reply {
+                            template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs };
+                            Report.send(save_metric_request);
+                            }
+                        [] Mano.receive {
+                            // We received junk
+                            setverdict(fail)
+                        }
+                    }
 
                     template Cleanup_Request cleanup_req := {}
                     Mano.send(cleanup_req);

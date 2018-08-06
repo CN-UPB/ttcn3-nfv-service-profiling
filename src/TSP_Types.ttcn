@@ -99,7 +99,8 @@ module TSP_Types {
   type record Cleanup_Request { };
 
   type record Save_Metric {
-      TSP_Experiment experiment,
-      charstring metric
+      charstring experiment_name,
+      charstring metric,
+      ParameterConfigurations paramcfgs
   }
 }

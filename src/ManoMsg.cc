@@ -30,7 +30,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
     debug_http = true;
 
     //vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
-    nsd_path = "/home/dark/son-examples/service-projects/";
+    nsd_path = "/home/dark/nfv-service-profiling/external/son-examples/service-projects/";
 
     gatekeeper_rest_url = "http://172.17.0.2:5000";
     vimemu_rest_url = "http://172.17.0.2:5001";
@@ -254,6 +254,9 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     std::string service_name = std::string(((const char*)send_par.service__name()));
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfg());
 
+    std::vector<std::string> service_name_elements;
+    boost::split(service_name_elements, service_name, boost::is_any_of("."));
+
     for(int i = 0; i < parameters.lengthof(); i++) {
         std::string vnf_name = (const char*)parameters[i].function__id();
 
@@ -262,6 +265,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         int memory = (const int)parameters[i].memory();
         int storage = (const int)parameters[i].storage();
 
+		// TODO
         // Additional parameter configuration values
         //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
         //for(int i = 0; i < rvalues.size_of() ; i++) {
@@ -272,26 +276,25 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         //    }
         //}
 
-        std::vector<std::string> service_name_elements;
-        boost::split(service_name_elements, service_name, boost::is_any_of("."));
-
         log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
         // TODO
-        //std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
-        std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
+        std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
+        //std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
 
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
-        std::string cmd = "python3 /home/dark/nfv-service-profiling/bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
+        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
         log("Command: %s", cmd.c_str());
 
         std::system(cmd.c_str());
     }
 
     // Create the service package
-    boost::process::spawn("son-package --project /home/dark/son-examples/service-projects/sonata-snort-service-emu -n sonata-snort-service",
+    std::string son_cmd = "son-package --project " + nsd_path  + service_name_elements[0] + "-emu -d " + nsd_path + " -n " + service_name_elements[0];
+    log("Command: %s", son_cmd.c_str());
+    boost::process::spawn(son_cmd,
             boost::process::std_in.close(),
             boost::process::std_out > boost::process::null,
             boost::process::std_err > boost::process::null);
