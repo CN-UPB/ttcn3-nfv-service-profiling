@@ -71,8 +71,12 @@ module TSP_Types {
 
   type record of Monitor Monitors;
 
-
   type record Setup_SFC { charstring service_name };
+
+  type record Setup_Monitor {
+      Monitors monitors,
+      integer interval
+  };
 
   type record Add_VNF {
       charstring name,
@@ -86,7 +90,7 @@ module TSP_Types {
   };
 
   type record Start_CMD { charstring cmd, charstring vnf, charstring output_parser optional };
-  type record Start_CMD_reply { charstring metric };
+  type record Start_CMD_Reply { charstring metric };
 
   type record Parameter_Macro {
       float min,
@@ -101,6 +105,14 @@ module TSP_Types {
   type record Save_Metric {
       charstring experiment_name,
       charstring metric,
-      ParameterConfigurations paramcfgs
+      ParameterConfigurations paramcfgs,
+      integer run
+  }
+
+  type record Save_Monitor_Metric {
+      charstring experiment_name,
+      charstring vnf_name,
+      charstring metric,
+      integer run
   }
 }

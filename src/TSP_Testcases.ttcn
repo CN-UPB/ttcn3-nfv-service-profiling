@@ -9,7 +9,8 @@ module TSP_Testcases {
         map(mtc:Report, system:Report);
 
         var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
-        log(paramcfgs);
+
+        var integer run := 0;
 
         for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
             // vCPUs
@@ -42,12 +43,12 @@ module TSP_Testcases {
                     template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
                     Mano.send(start_cmd_request2);
 
-                    var Start_CMD_reply cmd_reply := {};
+                    var Start_CMD_Reply cmd_reply := {};
                     // TODO: Save output
                     var charstring metric;
                     alt {
-                        [] Mano.receive(Start_CMD_reply:?) -> value cmd_reply {
-                            template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs };
+                        [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
+                            template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs, run };
                             Report.send(save_metric_request);
                             }
                         [] Mano.receive {
@@ -58,6 +59,8 @@ module TSP_Testcases {
 
                     template Cleanup_Request cleanup_req := {}
                     Mano.send(cleanup_req);
+
+                    run := run + 1;
                 }
             }
         }

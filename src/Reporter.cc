@@ -2,20 +2,16 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <elasticlient/client.h>
-#include <cpr/response.h>
-#include <cpprest/json.h>
-
-// for JSON
-using namespace web;
+#include <fstream>
 
 namespace TSP__PortType {
 
 Reporter::Reporter(const char *par_port_name)
 	: Reporter_BASE(par_port_name)
 {
-	elasticsearch_urls = {"http://localhost:9200/"};
     debug = true;
+    output_dir = "/home/dark/report/";
+    header = false;
 }
 
 Reporter::~Reporter()
@@ -55,7 +51,6 @@ void Reporter::user_map(const char * /*system_port*/)
 
 void Reporter::user_unmap(const char * /*system_port*/)
 {
-
 }
 
 void Reporter::user_start()
@@ -70,45 +65,67 @@ void Reporter::user_stop()
 
 void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 {
-	elasticlient::Client client(elasticsearch_urls);
-    json::value document;
-	document["experiment_name"] = json::value::string((const char*)send_par.experiment__name());
+    std::ofstream csvfile;
+    std::string filename((const char*)send_par.experiment__name());
+    csvfile.open(output_dir + filename, std::ios_base::app);
 
-	auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfgs());
-	/*for(int i = 0; i < parameters.lengthof(); i++) {
-        document["sp_parameters"][i]["vnf_name"] = json::value::string((const char*)parameters[i].function__id());
+    int run = (const int)send_par.run();
 
-		// All main values that vim-emu supports
-		document["sp_parameters"][i]["vcpus"] = json::value::number((const int)parameters[i].vcpus());
-		document["sp_parameters"][i]["memory"] = json::value::number((const int)parameters[i].memory());
-        document["sp_parameters"][i]["storage"] = json::value::number((const int)parameters[i].storage());
+    auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfgs());
+    TSP__Types::ParameterValues additional_parameters;
 
-		// Additional parameter configuration values
-		//auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
-		//for(int i = 0; i < rvalues.size_of() ; i++) {
-		//    if(rvalues[i].name() == "vcpu") {
-		//        vcpus = rvalues[i].actual__value();
-		//    } else if(rvalues[i].name() == "memory") {
-		//        memory = rvalues[i].actual__value();
-		//    }
-		//}
-	}*/
+    bool additional_parameters_present = parameters[0].additional__parameters().ispresent();
 
-    //log("Document: ", document.serialize().c_str());
-    //cpr::Response indexResponse = client.index("serviceprofiling", "sp_report", "2233", document.serialize().c_str());
+    // Create header
+    if(!header) {
+        csvfile << "run" << "," << "vcpus" << "," << "memory" << "," << "storage";
+        if(additional_parameters_present && additional_parameters.is_bound()) {
+            additional_parameters = (const TSP__Types::ParameterValues)parameters[0].additional__parameters();
+            for(int i = 0; i < additional_parameters.size_of() ; i++) {
+                csvfile << "," << additional_parameters[i].name();
+            }
+        }
+        csvfile << "," << "metric" << std::endl;
+
+        log("This should be in the log once!");
+        header = true;
+    }
+
+    // All main values that vim-emu supports
+    int vcpus = (const int)parameters[0].vcpus();
+    int memory = (const int)parameters[0].memory();
+    int storage = (const int)parameters[0].storage();
+
+    csvfile << run << "," << vcpus << "," << memory << "," << storage;
+
+    // Additional parameter configuration values
+    if(additional_parameters_present && additional_parameters.is_bound()) {
+        for(int i = 0; i < additional_parameters.size_of() ; i++) {
+            csvfile << "," << additional_parameters[i].input();
+        }
+    }
+
+    // and at last the metric
+    std::string metric((const char*)send_par.metric());
+    csvfile << "," << metric << std::endl;
+
+    csvfile.close();
+}
+
+void Reporter::outgoing_send(const TSP__Types::Save__Monitor__Metric& send_par) {
 }
 
 // TODO: Place logging function to a helper class
 void Reporter::log(const char *fmt, ...) {
-	if (debug) {
-		va_list ap;
-		va_start(ap, fmt);
-		TTCN_Logger::begin_event(TTCN_DEBUG);
-		TTCN_Logger::log_event("ManoMsg Test Port (%s): ", get_name());
-		TTCN_Logger::log_event_va_list(fmt, ap);
-		TTCN_Logger::end_event();
-		va_end(ap);
-	}
+    if (debug) {
+        va_list ap;
+        va_start(ap, fmt);
+        TTCN_Logger::begin_event(TTCN_DEBUG);
+        TTCN_Logger::log_event("ManoMsg Test Port (%s): ", get_name());
+        TTCN_Logger::log_event_va_list(fmt, ap);
+        TTCN_Logger::end_event();
+        va_end(ap);
+    }
 }
 
 

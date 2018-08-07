@@ -3,15 +3,17 @@ module TSP_PortType {
   
   type port ManoMsg message {
     out Setup_SFC;
+    out Setup_Monitor;
     out Add_VNF;
     out Set_Parameter_Config;
     out Start_CMD;
-    in Start_CMD_reply;
+    in Start_CMD_Reply;
     out Cleanup_Request;
   };
 
   type port Reporter message {
       out Save_Metric;
+      out Save_Monitor_Metric;
   }
   
   type component MANO {

@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <thread>
 
 namespace TSP__PortType {
 
@@ -28,12 +29,14 @@ private:
 	bool debug;
 	bool debug_http;
 	bool manage_docker;
+    bool metric_collecting;
 
 	/* vim-emu state */
 	std::string sfc_service_uuid;
 	std::string sfc_service_instance_uuid;
 	std::vector<std::string> running_vnfs;
     std::map<std::string, std::string> ip_vnfs;
+    std::vector<std::thread> monitor_threads;
 
 	/* Config parameters */
 	std::string vnf_path;
@@ -68,6 +71,7 @@ protected:
 	void outgoing_send(const TSP__Types::Start__CMD& send_par);
 	void outgoing_send(const TSP__Types::Set__Parameter__Config& send_par);
 	void outgoing_send(const TSP__Types::Cleanup__Request& send_par);
+    void outgoing_send(const TSP__Types::Setup__Monitor& send_par);
 };
 
 } /* end of namespace */

@@ -42,6 +42,8 @@ ManoMsg::ManoMsg(const char *par_port_name)
 
     //sfc_service_instance_uuid = "";
     //sfc_service_uuid = "";
+    
+    metric_collecting = false;
 }
 
 ManoMsg::~ManoMsg()
@@ -240,7 +242,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
         auto metric = OutputParser::parse(command_stdout, output_parser);
 
-        TSP__Types::Start__CMD__reply cmd_reply;
+        TSP__Types::Start__CMD__Reply cmd_reply;
         cmd_reply.metric() = CHARSTRING(metric.c_str());
         incoming_message(cmd_reply);
     }
@@ -301,6 +303,25 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
             boost::process::std_err > boost::process::null);
 
     log("Setting resource configuration of SFC %s completed", service_name.c_str());
+}
+
+void ManoMsg::outgoing_send(const TSP__Types::Setup__Monitor& send_par) {
+    int interval = ((const int)send_par.interval());
+
+    for(int i = 0; i < send_par.monitors().size_of(); i++) {
+        std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
+        std::string metric((const char*)send_par.monitors()[i].metric());
+
+        auto thread = std::thread([&]() {
+                while(metric_collecting) {
+
+                    // Wait for specified interval
+                    std::this_thread::sleep_for(std::chrono::milliseconds(interval * 1000));
+                }
+            });
+        
+        monitor_threads.emplace_back(std::move(thread));
+    }
 }
 
 /**
