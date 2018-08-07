@@ -4,6 +4,7 @@
 #include "TSP_PortType.hh"
 #include <string>
 #include <vector>
+#include <map>
 
 namespace TSP__PortType {
 
@@ -32,6 +33,7 @@ private:
 	std::string sfc_service_uuid;
 	std::string sfc_service_instance_uuid;
 	std::vector<std::string> running_vnfs;
+    std::map<std::string, std::string> ip_vnfs;
 
 	/* Config parameters */
 	std::string vnf_path;

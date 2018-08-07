@@ -4,6 +4,7 @@
 #include <cpprest/filestream.h>
 #include <iostream>
 #include <string>
+#include <map>
 #include <fstream>
 #include <streambuf>
 #include <cstdlib>
@@ -203,12 +204,12 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
     // replace macros in commands
     std::smatch match;
-    std::regex IP4("\\$\\{IP4:(.*)\\}");
+    std::regex IP4("\\$\\{VNF:IP4:(.*)\\}");
     if(std::regex_search(cmd, match, IP4)) {
         std::ssub_match sub_match = match[1];
-        std::string ip4_name = sub_match.str();
+        std::string ip4_from_name = sub_match.str();
 
-        auto ip4_address = start_local_program("docker inspect -f \"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}\" mn." + ip4_name);
+        auto ip4_address = ip_vnfs[ip4_from_name];
         std::string replacement = "$`" + ip4_address + "$'";
         cmd = regex_replace(cmd, IP4, replacement);
     }
@@ -448,6 +449,14 @@ void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
 
         if(response.status_code() == status_codes::OK) {
             running_vnfs.push_back(vnf_name);
+
+            // Get IP address and save it
+            auto json_reply = response.extract_json().get();
+            auto ip_address = json_reply.at("network")[0].at("ip").as_string();
+            std::vector<std::string> ip_address_elements;
+            boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
+            ip_vnfs[vnf_name] = ip_address_elements[0];
+
             log("Measurement point VNF %s created", vnf_name.c_str());
 
             return;
