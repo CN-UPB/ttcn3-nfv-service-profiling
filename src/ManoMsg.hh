@@ -30,12 +30,13 @@ private:
 	bool debug_http;
 	bool manage_docker;
     bool metric_collecting;
+    std::map<std::string, std::vector<std::string>> monitor_output;
 
 	/* vim-emu state */
 	std::string sfc_service_uuid;
 	std::string sfc_service_instance_uuid;
-	std::vector<std::string> running_vnfs;
-    std::map<std::string, std::string> ip_vnfs;
+	std::vector<std::string> running_agents;
+    std::map<std::string, std::string> ip_agents;
     std::vector<std::thread> monitor_threads;
 
 	/* Config parameters */
@@ -52,10 +53,10 @@ private:
 	std::string uploadPackage(std::string filepath);
 	std::string startSfcService(std::string service_uuid);
 	void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
-	void connectVnfToSfc(std::string vnf_name, std::string vnf_cp);
-	void startVNF(std::string vnf_name, std::string vnf_image);
-	void stopAllVNF();
-	void stopVNF(std::string vnf_name);
+	void connectAgentToSfc(std::string vnf_name, std::string vnf_cp);
+	void startAgent(std::string vnf_name, std::string vnf_image);
+	void stopAllAgents();
+	void stopAgent(std::string vnf_name);
 	void startDockerContainer();
 	void stopDockerContainer();
     std::string start_local_program(std::string);
@@ -67,11 +68,11 @@ protected:
 	void user_stop();
 
 	void outgoing_send(const TSP__Types::Setup__SFC& send_par);
-	void outgoing_send(const TSP__Types::Add__VNF& send_par);
+	void outgoing_send(const TSP__Types::Add__Agents& send_par);
+    void outgoing_send(const TSP__Types::Add__Monitors& send_par);
 	void outgoing_send(const TSP__Types::Start__CMD& send_par);
 	void outgoing_send(const TSP__Types::Set__Parameter__Config& send_par);
 	void outgoing_send(const TSP__Types::Cleanup__Request& send_par);
-    void outgoing_send(const TSP__Types::Setup__Monitor& send_par);
 };
 
 } /* end of namespace */

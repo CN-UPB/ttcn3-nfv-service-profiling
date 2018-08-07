@@ -15,14 +15,11 @@ module TSP_Testcases {
         for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
             // vCPUs
             for(var integer i := 0; i < sizeof(spe.paramcfgs[current_param].vcpus); i := i + 1) {
-                //var  current_param_macro := valueof(spe.paramcfgs[current_param].param_macros[]);
                 paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[i];
 
                 // Memory
                 for(var integer j := 0; j < sizeof(spe.paramcfgs[current_param].memory); j := j + 1) {
                     paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[j];
-
-                    //paramcfgs[current_param].param_values[j] := { name:= paramcfgs[i].param_values[j].name, actual_value := float2str(new_value) }
 
                     template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs};
                     Mano.send(param_config_request);
@@ -30,18 +27,17 @@ module TSP_Testcases {
                     template Setup_SFC setup_sfc_req := { spe.service_name }
                     Mano.send(setup_sfc_req);
 
-                    template Add_VNF add_vnf_request1 := { spe.agents[0].name, spe.agents[0].connection_point, spe.agents[0].image };
-                    Mano.send(add_vnf_request1);
+                    template Add_Agents add_agents_request := { spe.agents };
+                    Mano.send(add_agents_request);
 
-                    template Add_VNF add_vnf_request2 := { spe.agents[1].name, spe.agents[1].connection_point, spe.agents[1].image };
-                    Mano.send(add_vnf_request2);
+                    if(ispresent(spe.monitors)) {
+                        template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors, 1 };
+                        Mano.send(add_monitors_request);
+                    }
 
                     // TODO: There may be only one Agent
-                    template Start_CMD start_cmd_request1 := { spe.agents[0].cmd, spe.agents[0].name, omit};
-                    Mano.send(start_cmd_request1);
-
-                    template Start_CMD start_cmd_request2 := { spe.agents[1].cmd, spe.agents[1].name, spe.agents[1].output_parser}
-                    Mano.send(start_cmd_request2);
+                    template Start_CMD start_cmd_request := { spe.agents };
+                    Mano.send(start_cmd_request);
 
                     var Start_CMD_Reply cmd_reply := {};
                     // TODO: Save output

@@ -73,15 +73,14 @@ module TSP_Types {
 
   type record Setup_SFC { charstring service_name };
 
-  type record Setup_Monitor {
+  type record Add_Monitors {
+      charstring service_name,
       Monitors monitors,
       integer interval
   };
 
-  type record Add_VNF {
-      charstring name,
-      charstring connection_point,
-      charstring image
+  type record Add_Agents {
+      Agents agents
   };
 
   type record Set_Parameter_Config {
@@ -89,8 +88,20 @@ module TSP_Types {
       ParameterConfigurations paramcfg 
   };
 
-  type record Start_CMD { charstring cmd, charstring vnf, charstring output_parser optional };
-  type record Start_CMD_Reply { charstring metric };
+  type record Start_CMD {
+      Agents agents
+  };
+  type record Start_CMD_Reply {
+      charstring metric,
+      Monitor_Metrics monitor_metrics
+  };
+
+  type record Monitor_Metrics {
+      Monitor monitor,
+      Metrics metrics
+  }
+
+  type record of charstring Metrics;
 
   type record Parameter_Macro {
       float min,

@@ -118,7 +118,7 @@ void ManoMsg::user_map(const char * /*system_port*/)
  */
 void ManoMsg::user_unmap(const char * /*system_port*/)
 {
-    stopAllVNF();
+    stopAllAgents();
 
     if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
         stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
@@ -162,16 +162,19 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
  * Handles a send operation for an Add_VNF request, e.g. start a measurment point VNF
  * @param send_par Add_VNF request containing vnf_name, connection point and image
  */
-void ManoMsg::outgoing_send(const TSP__Types::Add__VNF& send_par)
+void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
 {
-    std::string vnf_name = std::string(((const char*)send_par.name()));
-    std::string vnf_cp = std::string(((const char*)send_par.connection__point()));
-    std::string vnf_image = std::string(((const char*)send_par.image()));
+    auto agents = (const TSP__Types::Agents)send_par.agents();
+    for(int i = 0; i < agents.size_of(); i++) {
+        std::string vnf_name = std::string(((const char*)agents[i].name()));
+        std::string vnf_cp = std::string(((const char*)agents[i].connection__point()));
+        std::string vnf_image = std::string(((const char*)agents[i].image()));
 
-    log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
+        log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
 
-    startVNF(vnf_name, vnf_image);
-    connectVnfToSfc(vnf_name, vnf_cp);
+        startAgent(vnf_name, vnf_image);
+        connectAgentToSfc(vnf_name, vnf_cp);
+    }
 }
 
 /**
@@ -181,7 +184,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 {
     log("Cleanup vim-emu!");
 
-    stopAllVNF();
+    stopAllAgents();
     //stopDockerContainer();
     //startDockerContainer();
 
@@ -194,57 +197,68 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
  */
 void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 {
-    std::string vnf_name = std::string(((const char*)send_par.vnf()));
-    std::string cmd = std::string(((const char*)send_par.cmd()));
+    auto agents = (const TSP__Types::Agents)send_par.agents();
 
-    OPTIONAL<CHARSTRING> output_parser_optional = ((const OPTIONAL<CHARSTRING>)send_par.output__parser());
-    std::string output_parser;
+    // Start the command for each Agent
+    for(int i = 0; i < agents.size_of(); i++) {
+        std::string vnf_name = std::string(((const char*)agents[i].name()));
 
-    if(output_parser_optional.is_present()) {
-        output_parser = output_parser_optional();
-    }
+        OPTIONAL<CHARSTRING> cmd_optional = ((const OPTIONAL<CHARSTRING>)agents[i].cmd());
+        if(!cmd_optional.is_present()) {
+            // We dont have to do anything as the Agent does not have any defined commands
+            break;
+        }
+        std::string cmd(cmd_optional());
 
-    // replace macros in commands
-    std::smatch match;
-    std::regex IP4("\\$\\{VNF:IP4:(.*)\\}");
-    if(std::regex_search(cmd, match, IP4)) {
-        std::ssub_match sub_match = match[1];
-        std::string ip4_from_name = sub_match.str();
+        OPTIONAL<CHARSTRING> output_parser_optional = ((const OPTIONAL<CHARSTRING>)agents[i].output__parser());
+        std::string output_parser;
 
-        auto ip4_address = ip_vnfs[ip4_from_name];
-        std::string replacement = "$`" + ip4_address + "$'";
-        cmd = regex_replace(cmd, IP4, replacement);
-    }
+        if(output_parser_optional.is_present()) {
+            output_parser = output_parser_optional();
+        }
 
-    log("Starting command %s on vnf %s", cmd.c_str(), vnf_name.c_str());
+        // replace macros in commands
+        std::smatch match;
+        std::regex IP4("\\$\\{VNF:IP4:(.*)\\}");
+        if(std::regex_search(cmd, match, IP4)) {
+            std::ssub_match sub_match = match[1];
+            std::string ip4_from_name = sub_match.str();
 
-    std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
-    start_local_program(ssh_start_cmd);
+            auto ip4_address = ip_agents[ip4_from_name];
+            std::string replacement = "$`" + ip4_address + "$'";
+            cmd = regex_replace(cmd, IP4, replacement);
+        }
 
-    std::string ssh_get_port_cmd = "docker port mn." + vnf_name + " 22";
-    auto port_stdout = start_local_program(ssh_get_port_cmd);
+        log("Starting command %s on vnf %s", cmd.c_str(), vnf_name.c_str());
 
-    // Split port from command output
-    std::vector<std::string> port_elements;
-    boost::split(port_elements, port_stdout, boost::is_any_of(":"));
-    std::string agent_port = port_elements[1];
+        std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
+        start_local_program(ssh_start_cmd);
 
-    // TODO: Configureable password
-    std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
+        std::string ssh_get_port_cmd = "docker port mn." + vnf_name + " 22";
+        auto port_stdout = start_local_program(ssh_get_port_cmd);
 
-    if(output_parser.empty()) {
-        boost::process::spawn(command,
-                boost::process::std_in.close(),
-                boost::process::std_out > boost::process::null,
-                boost::process::std_err > boost::process::null);
-    } else {
-        auto command_stdout = start_local_program(command);
+        // Split port from command output
+        std::vector<std::string> port_elements;
+        boost::split(port_elements, port_stdout, boost::is_any_of(":"));
+        std::string agent_port = port_elements[1];
 
-        auto metric = OutputParser::parse(command_stdout, output_parser);
+        // TODO: Configureable password
+        std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
 
-        TSP__Types::Start__CMD__Reply cmd_reply;
-        cmd_reply.metric() = CHARSTRING(metric.c_str());
-        incoming_message(cmd_reply);
+        if(output_parser.empty()) {
+            boost::process::spawn(command,
+                    boost::process::std_in.close(),
+                    boost::process::std_out > boost::process::null,
+                    boost::process::std_err > boost::process::null);
+        } else {
+            auto command_stdout = start_local_program(command);
+
+            auto metric = OutputParser::parse(command_stdout, output_parser);
+
+            TSP__Types::Start__CMD__Reply cmd_reply;
+            cmd_reply.metric() = CHARSTRING(metric.c_str());
+            incoming_message(cmd_reply);
+        }
     }
 }
 
@@ -268,7 +282,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         int memory = (const int)parameters[i].memory();
         int storage = (const int)parameters[i].storage();
 
-		// TODO
+        // TODO
         // Additional parameter configuration values
         //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
         //for(int i = 0; i < rvalues.size_of() ; i++) {
@@ -305,7 +319,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     log("Setting resource configuration of SFC %s completed", service_name.c_str());
 }
 
-void ManoMsg::outgoing_send(const TSP__Types::Setup__Monitor& send_par) {
+void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
+    std::string service_name((const char*)send_par.service__name());
     int interval = ((const int)send_par.interval());
 
     for(int i = 0; i < send_par.monitors().size_of(); i++) {
@@ -313,13 +328,19 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__Monitor& send_par) {
         std::string metric((const char*)send_par.monitors()[i].metric());
 
         auto thread = std::thread([&]() {
+                std::vector<std::string> metrics;
                 while(metric_collecting) {
+                std::string cmd = "docker stats --no-stream --format \"{{.CPUPerc}}\" mn." + service_name;
+                auto metric = start_local_program(cmd);
+                metrics.push_back(metric);
 
-                    // Wait for specified interval
-                    std::this_thread::sleep_for(std::chrono::milliseconds(interval * 1000));
+                // Wait for specified interval
+                std::this_thread::sleep_for(std::chrono::milliseconds(interval * 1000));
                 }
-            });
-        
+
+                monitor_output[vnf_name] = metrics;
+                });
+
         monitor_threads.emplace_back(std::move(thread));
     }
 }
@@ -448,11 +469,11 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
 }
 
 /**
- * Start a measurement point VNF
+ * Start an Agent
  * @param vnf_name Name of the VNF
  * @param vnf_image Image of the VNF
  */
-void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
+void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
     log("Start measurement point VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
 
     json::value postParameters = web::json::value::object();
@@ -469,14 +490,14 @@ void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
         http_response response = client.request(req).get();
 
         if(response.status_code() == status_codes::OK) {
-            running_vnfs.push_back(vnf_name);
+            running_agents.push_back(vnf_name);
 
             // Get IP address and save it
             auto json_reply = response.extract_json().get();
             auto ip_address = json_reply.at("network")[0].at("ip").as_string();
             std::vector<std::string> ip_address_elements;
             boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
-            ip_vnfs[vnf_name] = ip_address_elements[0];
+            ip_agents[vnf_name] = ip_address_elements[0];
 
             log("Measurement point VNF %s created", vnf_name.c_str());
 
@@ -492,22 +513,22 @@ void ManoMsg::startVNF(std::string vnf_name, std::string vnf_image) {
 /**
  * Stops all measurement point VNFs 
  */
-void ManoMsg::stopAllVNF() {
-    log("Stopping all measurement point VNFs");
+void ManoMsg::stopAllAgents() {
+    log("Stopping all Agents");
 
-    for(std::string vnf_name : running_vnfs) {
-        stopVNF(vnf_name);
+    for(std::string agent: running_agents) {
+        stopAgent(agent);
     }
 
-    running_vnfs.clear();
+    running_agents.clear();
 }
 
 /**
- * Stops a measurement point VNF
+ * Stops an Agent
  * @param vnf_name The VNF that should be stopped
  */
-void ManoMsg::stopVNF(std::string vnf_name) {
-    log("Stopping measurement point VNF %s", vnf_name.c_str());
+void ManoMsg::stopAgent(std::string vnf_name) {
+    log("Stopping Agent %s", vnf_name.c_str());
 
     http_client client(vimemu_rest_url);
     auto query = uri_builder("/restapi/compute/dc1/" + vnf_name).to_string(); // TODO: dc1 configureable
@@ -524,19 +545,19 @@ void ManoMsg::stopVNF(std::string vnf_name) {
 
             return;
         } else {
-            TTCN_error("Could not stop Measurement point VNF. Status: %d", response.status_code());
+            TTCN_error("Could not stop Agent. Status: %d", response.status_code());
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not stop Measurement point VNF: %s", e.what());
+        TTCN_error("Could not stop Agent: %s", e.what());
     }
 }
 
 /**
- * Connects a VNF to a SFC
+ * Connects an Agent to an SFC
  * @param vnf_name The name of the VNF that should be connected to the SFC
  * @param vnf_cp The connection point that the VNF should be connected to
  */
-void ManoMsg::connectVnfToSfc(std::string vnf_name, std::string vnf_cp) {
+void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
     log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
 
     std::vector<std::string> vnf_cp_elements;

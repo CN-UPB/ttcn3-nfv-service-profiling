@@ -3,8 +3,8 @@ module TSP_PortType {
   
   type port ManoMsg message {
     out Setup_SFC;
-    out Setup_Monitor;
-    out Add_VNF;
+    out Add_Monitors;
+    out Add_Agents;
     out Set_Parameter_Config;
     out Start_CMD;
     in Start_CMD_Reply;
