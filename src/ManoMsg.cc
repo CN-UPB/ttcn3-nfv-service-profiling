@@ -33,6 +33,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
     //vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
     nsd_path = "/home/dark/nfv-service-profiling/external/son-examples/service-projects/";
 
+    docker_rest_url = "http://127.0.0.1:2376"
     gatekeeper_rest_url = "http://172.17.0.2:5000";
     vimemu_rest_url = "http://172.17.0.2:5001";
     rest_username = "admin";
@@ -255,6 +256,11 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
             auto metric = OutputParser::parse(command_stdout, output_parser);
 
+            for(auto & thread : monitor_threads) {
+                thread.join();
+            }
+            monitor_threads.clear();
+
             TSP__Types::Start__CMD__Reply cmd_reply;
             cmd_reply.metric() = CHARSTRING(metric.c_str());
             incoming_message(cmd_reply);
@@ -327,22 +333,49 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
         std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
         std::string metric((const char*)send_par.monitors()[i].metric());
 
-        auto thread = std::thread([&]() {
+        log("Adding Monitor %s with metric %s", vnf_name.c_str(), metric.c_str());
+
+        std::function<void()> collectMonitorMetric = [&]() {
                 std::vector<std::string> metrics;
                 while(metric_collecting) {
-                std::string cmd = "docker stats --no-stream --format \"{{.CPUPerc}}\" mn." + service_name;
-                auto metric = start_local_program(cmd);
-                metrics.push_back(metric);
+                    //std::string cmd = "docker stats --no-stream --format \"{{.CPUPerc}}\" mn." + service_name;
+                    //auto metric = start_local_program(cmd);
 
-                // Wait for specified interval
-                std::this_thread::sleep_for(std::chrono::milliseconds(interval * 1000));
+                    http_client client(docker_rest_url);
+                    auto query = uri_builder("/containers/mn" + service__name + "/stats/").to_string();
+
+                    http_request req(methods::GET);
+                    req.set_request_uri(query);
+                    req.set_body(postParameters);
+
+                    try {
+                        http_response response = client.request(req).get();
+
+                        if(response.status_code() == status_codes::OK) {
+                            running_agents.push_back(vnf_name);
+
+                            // Get IP address and save it
+                            auto json_reply = response.extract_json().get();
+                            auto metric = json_reply.at("cpu_stats").as_string();
+                            metrics.push_back(metric);
+                            return;
+                        }
+                    } catch (const http_exception &e) {
+                        // Something is broken and we do not handle exceptions yet
+                        return;
+                    }
+
+                    // Wait for specified interval
+                    std::this_thread::sleep_for(std::chrono::seconds(interval));
                 }
 
-                monitor_output[vnf_name] = metrics;
-                });
+                //monitor_output[vnf_name] = metrics;
+        };
 
-        monitor_threads.emplace_back(std::move(thread));
+        monitor_threads.push_back(std::thread(collectMonitorMetric));
     }
+
+    log("Added Monitors");
 }
 
 /**

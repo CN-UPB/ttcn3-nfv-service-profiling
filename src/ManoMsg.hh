@@ -42,6 +42,7 @@ private:
 	/* Config parameters */
 	std::string vnf_path;
 	std::string nsd_path;
+    std::string docker_rest_url;
 	std::string gatekeeper_rest_url;
 	std::string vimemu_rest_url;
 	std::string rest_username;
