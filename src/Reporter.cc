@@ -20,13 +20,13 @@ Reporter::~Reporter()
 }
 
 void Reporter::set_parameter(const char * /*parameter_name*/,
-	const char * /*parameter_value*/)
+        const char * /*parameter_value*/)
 {
 
 }
 
 /*void Reporter::Handle_Fd_Event(int fd, boolean is_readable,
-	boolean is_writable, boolean is_error) {}*/
+  boolean is_writable, boolean is_error) {}*/
 
 void Reporter::Handle_Fd_Event_Error(int /*fd*/)
 {
@@ -74,21 +74,23 @@ void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfgs());
     TSP__Types::ParameterValues additional_parameters;
 
-    bool additional_parameters_present = parameters[0].additional__parameters().ispresent();
-
     // Create header
     if(!header) {
-        csvfile << "run" << "," << "vcpus" << "," << "memory" << "," << "storage";
-        if(additional_parameters_present && additional_parameters.is_bound()) {
-            additional_parameters = (const TSP__Types::ParameterValues)parameters[0].additional__parameters();
-            for(int i = 0; i < additional_parameters.size_of() ; i++) {
-                csvfile << "," << additional_parameters[i].name();
+        for(int i = 0; i < parameters.size_of(); i++) {
+            std::string name((const char*)parameters[i].function__id());
+            csvfile << "run" << "," << "vcpus:"+name << "," << "memory:" + name << "," << "storage:" + name;
+            if(parameters[i].additional__parameters().ispresent()) {
+                additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
+                for(int j = 0; j < additional_parameters.size_of() ; j++) {
+                    csvfile << "," << std::string(additional_parameters[j].name()) + ":" + name;
+                }
             }
-        }
-        csvfile << "," << "metric" << std::endl;
+            csvfile << "," << "metric" << std::endl;
 
-        log("This should be in the log once!");
-        header = true;
+            log("This should be in the log once!");
+            header = true;
+
+        }
     }
 
     // All main values that vim-emu supports
@@ -99,9 +101,12 @@ void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
     csvfile << run << "," << vcpus << "," << memory << "," << storage;
 
     // Additional parameter configuration values
-    if(additional_parameters_present && additional_parameters.is_bound()) {
-        for(int i = 0; i < additional_parameters.size_of() ; i++) {
-            csvfile << "," << additional_parameters[i].input();
+    for(int i = 0; i < parameters.size_of(); i++) {
+        if(parameters[i].additional__parameters().ispresent()) {
+            additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
+            for(int j = 0; j < additional_parameters.size_of() ; j++) {
+                csvfile << "," << additional_parameters[j].input();
+            }
         }
     }
 

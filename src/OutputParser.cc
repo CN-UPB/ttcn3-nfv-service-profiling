@@ -17,8 +17,6 @@ namespace OutputParser {
         if(parser == "iperf3-json-bits_per_second") {
             web::json::value j = web::json::value::parse(input);
 
-            std::cout << j << "\n";
-
             web::json::value metric;
 
             if(j.has_field("end") && j.at("end").has_field("sum_received") && j.at("end").at("sum_received").has_field("bits_per_second")) {

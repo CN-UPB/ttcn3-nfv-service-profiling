@@ -332,47 +332,51 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
 }
 
 void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
+    return; // TODO
     std::string service_name((const char*)send_par.service__name());
     int interval = ((const int)send_par.interval());
 
     for(int i = 0; i < send_par.monitors().size_of(); i++) {
         std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
-        std::string metric((const char*)send_par.monitors()[i].metric());
+        auto metrics = (const TSP__Types::Metrics)send_par.monitors()[i].metrics();
 
-        log("Adding Monitor %s with metric %s", vnf_name.c_str(), metric.c_str());
+        for(int n = 0; n < metrics.size_of(); n++) {
+            std::string metric(metrics[n]);
+            log("Adding Monitor %s with metric %s", vnf_name.c_str(), metric.c_str());
 
-        // Return: [vnf_name, {metric_name, values}]
-        std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>()> collectMonitorMetric = [&]() {
-            std::map<std::string, std::vector<std::string>> metric_values;
-            http_client client(docker_rest_url);
-            auto query = uri_builder("/containers/mn." + vnf_name + "/stats").set_query("stream=0").to_string();
+            // Return: [vnf_name, {metric_name, values}]
+            std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>()> collectMonitorMetric = [&]() {
+                std::map<std::string, std::vector<std::string>> metric_values;
+                http_client client(docker_rest_url);
+                auto query = uri_builder("/containers/mn." + vnf_name + "/stats").set_query("stream=0").to_string();
 
-            http_request req(methods::GET);
-            req.set_request_uri(query);
+                http_request req(methods::GET);
+                req.set_request_uri(query);
 
-            try {
-                http_response response = client.request(req).get();
+                try {
+                    http_response response = client.request(req).get();
 
-                if(response.status_code() == status_codes::OK) {
-                    auto json_reply = response.extract_json().get();
-                    auto cpu_stats = json_reply.at("cpu_stats");
+                    if(response.status_code() == status_codes::OK) {
+                        auto json_reply = response.extract_json().get();
+                        auto cpu_stats = json_reply.at("cpu_stats");
 
-                    metric_values["cpu_stats"].push_back(cpu_stats.serialize());
+                        metric_values["cpu_stats"].push_back(cpu_stats.serialize());
+                    }
+                } catch (const http_exception &e) {
+                    // Something is broken and we do not handle exceptions yet
                 }
-            } catch (const http_exception &e) {
-                // Something is broken and we do not handle exceptions yet
-            }
 
-            // Wait for specified interval
-            //std::this_thread::sleep_for(std::chrono::seconds(interval));
+                // Wait for specified interval
+                //std::this_thread::sleep_for(std::chrono::seconds(interval));
 
-            std::map<std::string, std::map<std::string, std::vector<std::string>>> output;
-            output[vnf_name] = metric_values;
+                std::map<std::string, std::map<std::string, std::vector<std::string>>> output;
+                output[vnf_name] = metric_values;
 
-            return output;
-        };
+                return output;
+            };
 
-        monitor_futures.push_back(std::async(std::launch::async, collectMonitorMetric));
+            monitor_futures.push_back(std::async(std::launch::async, collectMonitorMetric));
+        }
     }
 
     log("Added Monitors");

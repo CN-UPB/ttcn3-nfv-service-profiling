@@ -7,11 +7,14 @@ module TSP_Testcases {
     testcase SimpleTSP(template TSP_Experiment spe) runs on MANO system MANO {
         map(mtc:Mano, system:Mano);
         map(mtc:Report, system:Report);
+        
+        timer serviceprofiling_timeout;
 
         var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
 
         var integer run := 0;
 
+        // Parameter Configs
         for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
             // vCPUs
             for(var integer i := 0; i < sizeof(spe.paramcfgs[current_param].vcpus); i := i + 1) {
@@ -24,39 +27,48 @@ module TSP_Testcases {
                     template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs};
                     Mano.send(param_config_request);
 
-                    template Setup_SFC setup_sfc_req := { spe.service_name }
-                    Mano.send(setup_sfc_req);
+                    // Repetitions
+                    for(var integer n := 0; n < valueof(spe.repetitions); n := n + 1) {
+                        template Setup_SFC setup_sfc_req := { spe.service_name }
+                        Mano.send(setup_sfc_req);
 
-                    template Add_Agents add_agents_request := { spe.agents };
-                    Mano.send(add_agents_request);
+                        template Add_Agents add_agents_request := { spe.agents };
+                        Mano.send(add_agents_request);
 
-                    if(ispresent(spe.monitors)) {
-                        template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors, 1 };
-                        Mano.send(add_monitors_request);
-                    }
-
-                    // TODO: There may be only one Agent
-                    template Start_CMD start_cmd_request := { spe.agents };
-                    Mano.send(start_cmd_request);
-
-                    var Start_CMD_Reply cmd_reply := {};
-                    // TODO: Save output
-                    var charstring metric;
-                    alt {
-                        [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
-                            template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs, run };
-                            Report.send(save_metric_request);
-                            }
-                        [] Mano.receive {
-                            // We received junk
-                            setverdict(fail)
+                        if(ispresent(spe.monitors)) {
+                            template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors, 1 };
+                            Mano.send(add_monitors_request);
                         }
+
+                        template Start_CMD start_cmd_request := { spe.agents };
+                        Mano.send(start_cmd_request);
+
+                        serviceprofiling_timeout.start(valueof(spe.profiling_timeout));
+
+                        var Start_CMD_Reply cmd_reply := {};
+                        alt {
+                            [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
+                                // We received a metric
+                                template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs, run };
+                                Report.send(save_metric_request);
+                               }
+                            [] Mano.receive {
+                                // We received junk and that should not happen
+                                setverdict(fail)
+                               }
+                            [] serviceprofiling_timeout.timeout {
+                                // Collecting the metric concluded in a timeout
+                                setverdict(inconc)
+                               }
+                        }
+
+                        serviceprofiling_timeout.stop
+
+                        template Cleanup_Request cleanup_req := {}
+                        Mano.send(cleanup_req);
+
+                        run := run + 1;
                     }
-
-                    template Cleanup_Request cleanup_req := {}
-                    Mano.send(cleanup_req);
-
-                    run := run + 1;
                 }
             }
         }
