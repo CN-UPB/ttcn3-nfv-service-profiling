@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include <thread>
+#include <future>
 
 namespace TSP__PortType {
 
@@ -37,7 +38,7 @@ private:
 	std::string sfc_service_instance_uuid;
 	std::vector<std::string> running_agents;
     std::map<std::string, std::string> ip_agents;
-    std::vector<std::thread> monitor_threads;
+    std::vector<std::future<std::map<std::string, std::map<std::string, std::vector<std::string>>>>> monitor_futures;
 
 	/* Config parameters */
 	std::string vnf_path;

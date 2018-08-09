@@ -14,6 +14,7 @@
 #include <chrono>
 #include <thread>
 #include <regex>
+#include <future>
 
 
 using namespace utility;
@@ -33,7 +34,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
     //vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
     nsd_path = "/home/dark/nfv-service-profiling/external/son-examples/service-projects/";
 
-    docker_rest_url = "http://127.0.0.1:2376"
+    docker_rest_url = "http://127.0.0.1:2376";
     gatekeeper_rest_url = "http://172.17.0.2:5000";
     vimemu_rest_url = "http://172.17.0.2:5001";
     rest_username = "admin";
@@ -256,10 +257,15 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
             auto metric = OutputParser::parse(command_stdout, output_parser);
 
-            for(auto & thread : monitor_threads) {
-                thread.join();
+            for(auto & future : monitor_futures) {
+                try {
+                    std::map<std::string, std::map<std::string, std::vector<std::string>>> test = future.get();
+                    log("Monitor Output: %s", test["snort_vnf"]["cpu_stats"][0].c_str());
+                } catch(const std::exception& e) {
+                    log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
+                }
             }
-            monitor_threads.clear();
+            monitor_futures.clear();
 
             TSP__Types::Start__CMD__Reply cmd_reply;
             cmd_reply.metric() = CHARSTRING(metric.c_str());
@@ -335,44 +341,38 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
 
         log("Adding Monitor %s with metric %s", vnf_name.c_str(), metric.c_str());
 
-        std::function<void()> collectMonitorMetric = [&]() {
-                std::vector<std::string> metrics;
-                while(metric_collecting) {
-                    //std::string cmd = "docker stats --no-stream --format \"{{.CPUPerc}}\" mn." + service_name;
-                    //auto metric = start_local_program(cmd);
+        // Return: [vnf_name, {metric_name, values}]
+        std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>()> collectMonitorMetric = [&]() {
+            std::map<std::string, std::vector<std::string>> metric_values;
+            http_client client(docker_rest_url);
+            auto query = uri_builder("/containers/mn." + vnf_name + "/stats").set_query("stream=0").to_string();
 
-                    http_client client(docker_rest_url);
-                    auto query = uri_builder("/containers/mn" + service__name + "/stats/").to_string();
+            http_request req(methods::GET);
+            req.set_request_uri(query);
 
-                    http_request req(methods::GET);
-                    req.set_request_uri(query);
-                    req.set_body(postParameters);
+            try {
+                http_response response = client.request(req).get();
 
-                    try {
-                        http_response response = client.request(req).get();
+                if(response.status_code() == status_codes::OK) {
+                    auto json_reply = response.extract_json().get();
+                    auto cpu_stats = json_reply.at("cpu_stats");
 
-                        if(response.status_code() == status_codes::OK) {
-                            running_agents.push_back(vnf_name);
-
-                            // Get IP address and save it
-                            auto json_reply = response.extract_json().get();
-                            auto metric = json_reply.at("cpu_stats").as_string();
-                            metrics.push_back(metric);
-                            return;
-                        }
-                    } catch (const http_exception &e) {
-                        // Something is broken and we do not handle exceptions yet
-                        return;
-                    }
-
-                    // Wait for specified interval
-                    std::this_thread::sleep_for(std::chrono::seconds(interval));
+                    metric_values["cpu_stats"].push_back(cpu_stats.serialize());
                 }
+            } catch (const http_exception &e) {
+                // Something is broken and we do not handle exceptions yet
+            }
 
-                //monitor_output[vnf_name] = metrics;
+            // Wait for specified interval
+            //std::this_thread::sleep_for(std::chrono::seconds(interval));
+
+            std::map<std::string, std::map<std::string, std::vector<std::string>>> output;
+            output[vnf_name] = metric_values;
+
+            return output;
         };
 
-        monitor_threads.push_back(std::thread(collectMonitorMetric));
+        monitor_futures.push_back(std::async(std::launch::async, collectMonitorMetric));
     }
 
     log("Added Monitors");

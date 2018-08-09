@@ -120,7 +120,7 @@ TARGET = $(EXECUTABLE)
 #
 SOLARIS_LIBS = -lsocket -lnsl -lxml2
 SOLARIS8_LIBS = -lsocket -lnsl -lxml2
-LINUX_LIBS = -lxml2 -ljsoncpp -lyaml-cpp -lcpprest -lboost_system -lboost_filesystem -lpthread -lelasticlient
+LINUX_LIBS = -lxml2 -lcpprest -lboost_system -lboost_filesystem -lpthread
 FREEBSD_LIBS = -lxml2
 WIN32_LIBS = -lxml2
 
