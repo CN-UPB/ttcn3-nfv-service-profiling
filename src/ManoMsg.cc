@@ -32,7 +32,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
     debug_http = true;
 
     //vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
-    nsd_path = "/home/dark/nfv-service-profiling/external/son-examples/service-projects/";
+    nsd_path = "/home/dark/teaspoon/external/son-examples/service-projects/";
 
     docker_rest_url = "http://127.0.0.1:2376";
     gatekeeper_rest_url = "http://172.17.0.2:5000";
@@ -115,7 +115,7 @@ void ManoMsg::user_map(const char * /*system_port*/)
 }
 
 /**
- * TTCN-3 unmap operation. Cleans up everything, e.g. stop a measurment point VNFs, stops the
+ * TTCN-3 unmap operation. Cleans up everything, e.g. stops all Agent VNFs, stops the
  * SFC and stop the vim-emu container
  */
 void ManoMsg::user_unmap(const char * /*system_port*/)
@@ -161,8 +161,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 }
 
 /**
- * Handles a send operation for an Add_VNF request, e.g. start a measurment point VNF
- * @param send_par Add_VNF request containing vnf_name, connection point and image
+ * Handles a send operation for an Add_Agents request, e.g. start the Agents
+ * @param send_par Add_Agents request containing at least one vnf_name, connection point and image
  */
 void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
 {
@@ -172,7 +172,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
         std::string vnf_cp = std::string(((const char*)agents[i].connection__point()));
         std::string vnf_image = std::string(((const char*)agents[i].image()));
 
-        log("Setting up VNF %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
+        log("Setting up Agent %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
 
         startAgent(vnf_name, vnf_image);
         connectAgentToSfc(vnf_name, vnf_cp);
@@ -308,7 +308,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         log("Setting resource configuration of VNF %s", vnf_name.c_str());
 
         // TODO
-        std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "d.yml";
+        std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "-vnfd.yml";
         //std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
 
         log("Filename %s", filename.c_str());
@@ -323,10 +323,13 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     // Create the service package
     std::string son_cmd = "son-package --project " + nsd_path  + service_name_elements[0] + "-emu -d " + nsd_path + " -n " + service_name_elements[0];
     log("Command: %s", son_cmd.c_str());
-    boost::process::spawn(son_cmd,
-            boost::process::std_in.close(),
-            boost::process::std_out > boost::process::null,
-            boost::process::std_err > boost::process::null);
+    auto son_cmd_output = start_local_program(son_cmd);
+
+    log("Command output: %s", son_cmd_output.c_str());
+    //boost::process::spawn(son_cmd,
+    //        boost::process::std_in.close(),
+    //        boost::process::std_out > boost::process::null,
+    //        boost::process::std_err > boost::process::null);
 
     log("Setting resource configuration of SFC %s completed", service_name.c_str());
 }
@@ -511,7 +514,7 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
  * @param vnf_image Image of the VNF
  */
 void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
-    log("Start measurement point VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
+    log("Start Agent VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
 
     json::value postParameters = web::json::value::object();
     postParameters["image"] = json::value::string(vnf_image);
@@ -536,19 +539,19 @@ void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
             boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
             ip_agents[vnf_name] = ip_address_elements[0];
 
-            log("Measurement point VNF %s created", vnf_name.c_str());
+            log("Agent VNF %s created", vnf_name.c_str());
 
             return;
         } else {
-            TTCN_error("Could not start Measurement point VNF. Status: %d", response.status_code());
+            TTCN_error("Could not start Agent VNF. Status: %d", response.status_code());
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not start Measurement point VNF: %s", e.what());
+        TTCN_error("Could not start Agent VNF: %s", e.what());
     }
 }
 
 /**
- * Stops all measurement point VNFs 
+ * Stops all Agent VNFs 
  */
 void ManoMsg::stopAllAgents() {
     log("Stopping all Agents");
@@ -578,7 +581,7 @@ void ManoMsg::stopAgent(std::string vnf_name) {
 
         if(response.status_code() == status_codes::OK) {
             //running_vnfs.push_back(vnf_name); TODO: Reverse operation (delete)
-            log("Measurement point VNF %s stopped", vnf_name.c_str());
+            log("Agent VNF %s stopped", vnf_name.c_str());
 
             return;
         } else {
@@ -597,8 +600,13 @@ void ManoMsg::stopAgent(std::string vnf_name) {
 void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
     log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
 
+
     std::vector<std::string> vnf_cp_elements;
-    boost::split(vnf_cp_elements, vnf_cp, boost::is_any_of(":"));
+    if(vnf_cp.find(":") != std::string::npos) {
+        boost::split(vnf_cp_elements, vnf_cp, boost::is_any_of(":"));
+    } else {
+        TTCN_error("Connection point %s has the wrong format. \":\" expected", vnf_cp.c_str());
+    }
 
     json::value postParameters = web::json::value::object();
     postParameters["vnf_src_name"] = json::value::string(vnf_name);
@@ -625,11 +633,13 @@ void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
 
             return;
         } else {
-            TTCN_error("Could not create Measurement point VNF. Status: %d", response.status_code());
+            TTCN_error("Could not create Agent VNF. Status: %d", response.status_code());
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not create Measurement point VNF: %s", e.what());
+        TTCN_error("Could not create Agent VNF: %s", e.what());
     }
+
+    log("%s is connected to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
 }
 
 /**
@@ -681,6 +691,7 @@ std::string ManoMsg::start_local_program(std::string command) {
     boost::asio::io_service ios;
 
     std::future<std::string> data;
+    std::error_code ec;
 
     boost::process::child c(command,
             boost::process::std_in.close(),
@@ -689,12 +700,25 @@ std::string ManoMsg::start_local_program(std::string command) {
             ios);
 
 
-    ios.run();
+    try {
+        ios.run();
+    } catch(const boost::process::process_error &e) {
+        TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+    }
 
-    auto output = data.get();
-    output.pop_back(); // Delete last character, e.g. last newline
 
-    return output;
+    log("test2");
+	try {
+		auto output = data.get();
+        if(output.size() > 0) {
+            output.pop_back(); // Delete last character, e.g. last newline
+        }
+
+        return output;
+    } catch (const boost::process::process_error &e) {
+        TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+    }
+    log("test3");
 }
 
 

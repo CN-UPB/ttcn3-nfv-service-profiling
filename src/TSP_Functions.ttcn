@@ -18,15 +18,17 @@ module TSP_Functions {
 
             // Additional parameter configs
             var template ParameterValues additional_param_values := {};
-            for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
-                template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
-                select union (valueof(additional_parameter.parameter)) {
-                    case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
-                                    input := float2str(valueof(additional_parameter.parameter.macro.min)) };
-                                 }
-                    case (list) { additional_param_values[j] := { name := additional_parameter.name,
-                                    input := int2str(valueof(additional_parameter.parameter.list[0])) };
-                                }
+            if(isbound(spe.paramcfgs[i].additional_parameters)) {
+                for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+                    template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
+                    select union (valueof(additional_parameter.parameter)) {
+                        case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
+                                        input := float2str(valueof(additional_parameter.parameter.macro.min)) };
+                                     }
+                        case (list) { additional_param_values[j] := { name := additional_parameter.name,
+                                        input := int2str(valueof(additional_parameter.parameter.list[0])) };
+                                    }
+                    }
                 }
             }
             
