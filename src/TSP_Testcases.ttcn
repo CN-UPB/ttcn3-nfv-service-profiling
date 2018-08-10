@@ -18,30 +18,74 @@ module TSP_Testcases {
         // Parameter Configs
         for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
             // vCPUs
-            for(var integer i := 0; i < sizeof(spe.paramcfgs[current_param].vcpus); i := i + 1) {
-                paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[i];
+            for(var integer vcpu_index := 0; vcpu_index < sizeof(spe.paramcfgs[current_param].vcpus); vcpu_index := vcpu_index + 1) {
+                paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[vcpu_index];
 
                 // Memory
-                for(var integer j := 0; j < sizeof(spe.paramcfgs[current_param].memory); j := j + 1) {
-                    paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[j];
+                for(var integer memory_index := 0; j < sizeof(spe.paramcfgs[current_param].memory); j := j + 1) {
+                    paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[memory_index];
 
                     // Additional Parameters
                     // There a mmatrix[sizeof(mmatrix)] many runs for all additional parameters. With the help of
                     // the mmatrix we choose which parameter should be increased
-                    for(var integer k := 0; k <= mmatrix[sizeof(mmatrix)]; k := k + 1) {
-                        for(var integer l := mmatrix[sizeof(mmatrix)]; l >= 0; l := l - 1) {
-							var 
+                    var float last_element_add_param;
+                    select union (valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter)) {
+                        case (macro) {
+                                        last_element_add_param := valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter.macro.max);
+                                     }
+                        case (list) {
+                                        var integer last_element_index := sizeof(spe.paramcfgs[current_param].additional_parameters[0].parameter.list)
+                                        last_element_add_param := valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter.list[last_element_index]);
+                                    }
+                    }
+                    while(str2float(valueof(paramcfgs[current_param].additional_parameters[0].input)) != last_element_add_param) {
+                        var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters);
+
+                        // TODO: Increment last element
+                        for(var integer i := last_param_index - 1; i > 0; i := i - 1) {
+							select union(valueof(spe.paramcfgs[current_param].additional_parameters[i].parameter)) {
+								case (macro) {
+                                                // Stop processing if this is not the last element in the macro
+                                                if(not_last_element) { break };
+                                                else
+                                                    set input[i] := min
+                                                    input[i-1] := next element
+											 }
+                                case (list) {
+                                                // Stop processing if we are the last element
+                                                if(not_last_element) { break };
+                                            }
+							}
+						}
+                              
+                    }
+                    /*for(var integer k := 0; k < mmatrix[current_param][sizeof(mmatrix)]; k := k + 1) {
+                        for(var integer l := mmatrix[current_param][sizeof(mmatrix)-1]; l >= 0; l := l - 1) {
                             if(k mod l == 0) {
-                                select union (valueof(spe.paramcfgs[current_param].additional_parameters[l].parameter)) {
+                                // Increase l+1
+                                // Reset <l
+                                // break;
+                            } else {
+                                // Increase 0
+                            }
+                            log("k: ", k);
+                            log("l: ", l);
+                            if(k == 0) {
+                                log("Changing nothing");
+                            } else if(l != 0 and k mod l == 0) {
+                                log("Changing row ", l+1);
+                                select union (valueof(spe.paramcfgs[current_param].additional_parameters[l+1].parameter)) {
                                 	case (macro) {
-													paramcfgs[current_param].additional_parameters[l].input := paramcfgs[current_param].additional_parameters[l].input + spe.paramcfgs[current_param].additional_parameters[l].parameter
+													paramcfgs[current_param].additional_parameters[l].input := float2str(str2float(valueof(paramcfgs[current_param].additional_parameters[l].input)) + valueof(spe.paramcfgs[current_param].additional_parameters[l].parameter.macro.step));
+                                                    log(paramcfgs[current_param].additional_parameters[l].input);
 												 }
 									case (list)	{
+                                                    //paramcfgs[current_param].additional_parameters[l].input := 
 												}
-								}
+                                }
                                 break;
                             }
-                        }
+                        }*/
 
                         template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs};
                         Mano.send(param_config_request);
