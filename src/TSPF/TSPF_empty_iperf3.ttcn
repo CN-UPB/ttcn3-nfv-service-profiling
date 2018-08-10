@@ -1,11 +1,11 @@
-module TSPF_snort_iperf3 {
+module TSPF_empty_iperf3 {
     import from TSP_Types all;
     import from TSP_Templates_Agents all;
     import from TSP_Testcases all;
 
     template ParameterConfigurationMacros paramcfg := {
         {
-            function_id := "snort-vnf",
+            function_id := "empty-vnf1",
             vcpus := { 1,2,3,4 },
             memory := { 2048, 4096, 6192 },
             storage := { 10 },
@@ -13,23 +13,31 @@ module TSPF_snort_iperf3 {
                 { "cpu_bw", { macro := {
                     min := 0.1,
                     max := 1.0,
-                    step := 0.3 }
-                }},
-                { "memswap_limit", { list :=
-                    { 3000, 4000, 5000, 6000 }
-                }}
+                    step := 0.3 }}
+                }
             }
+        },{
+            function_id := "empty-vnf2",
+            vcpus := { 1 },
+            memory := { 2048, 4096 },
+            storage := { 10 }
+        },{
+            function_id := "empty-vnf3",
+            vcpus := { 1,2,3 },
+            memory := { 4096 },
+            storage := { 10 }
         }
+
     };
 
     template Agents agent_list := {
-        iperf3server("snort_vnf:output"),
-        iperf3client("snort_vnf:input")
+        iperf3server("empty_vnf3:output"),
+        iperf3client("empty_vnf1:input")
     };
 
     template Monitors monitor_list := {
         {
-            vnf_name := "snort_vnf",
+            vnf_name := "empty-vnf1",
             metrics := {
                 "cpu-utilization",
                 "memory-maximum",
@@ -39,10 +47,10 @@ module TSPF_snort_iperf3 {
     };
 
     template TSP_Experiment spexperiment := {
-        name := "snort-iperf3",
+        name := "empty-iperf3",
         repetitions := 1,
         profiling_timeout := 300.0,
-        service_name := "sonata-snort-service.son",
+        service_name := "sonata-empty-service.son",
         paramcfgs := paramcfg,
         agents := agent_list,
         monitors := monitor_list

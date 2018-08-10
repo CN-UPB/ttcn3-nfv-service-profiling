@@ -16,6 +16,10 @@ module TSP_Templates_Agents {
         output_parser := "iperf3-json-bits_per_second"
     };
 
+    template Agent iperf3client_udp(charstring cp) modifies iperf3client := {
+        cmd := "iperf3 -b 100000M -u -t 5 -J -c ${VNF:IP4:server}"
+    }
+
     template Agent wrk_client(charstring cp) := {
         name := "client",
         connection_point := cp,

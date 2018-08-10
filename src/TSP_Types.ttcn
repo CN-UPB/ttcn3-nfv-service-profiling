@@ -129,4 +129,7 @@ module TSP_Types {
       charstring metric,
       integer run
   };
+
+  type record of integer moduloList;
+  type record of moduloList moduloMatrix;
 }

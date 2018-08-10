@@ -46,10 +46,40 @@ module TSP_Functions {
         return rcfgs;
     }
 
-    function f_run_service_profiling() runs on MANO {
-    }
+    function f_create_modulo_list_for_additional_parameters(template TSP_Experiment spe) return moduloMatrix {
+        var moduloMatrix mmatrix := {};
+        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+            var moduloList modulos := {};
+            var integer previousItem := 1;
+            if(isbound(spe.paramcfgs[i].additional_parameters)) {
+                for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+                    template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
 
-    //function f_create_parameter_matrix_for_additional_parameters(template TSP_Experiment spe) return record of float {
-    //}
+                    var integer modulo;
+                    select union (valueof(additional_parameter.parameter)) {
+                        case (macro) {
+                                        var float delta := valueof(additional_parameter.parameter.macro.max) - valueof(additional_parameter.parameter.macro.min);
+                                        modulo := float2int(delta / valueof(additional_parameter.parameter.macro.step)) * previousItem;
+
+                                     }
+                        case (list) {
+                                        modulo := sizeof(additional_parameter.parameter.list) * previousItem;
+                                    }
+                    }
+                    
+                    var integer next_item := sizeof(modulos);
+                    modulos[next_item] := modulo;
+
+                    previousItem := modulo;
+                }
+            }
+
+            var integer next_mm_item := sizeof(mmatrix);
+            mmatrix[next_mm_item] := modulos
+        }
+
+        log("Created the following modulo matrix: ", mmatrix);
+        return mmatrix;
+    }
 }
 
