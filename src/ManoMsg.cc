@@ -719,6 +719,7 @@ std::string ManoMsg::start_local_program(std::string command) {
         TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
     }
     log("test3");
+    return "";
 }
 
 

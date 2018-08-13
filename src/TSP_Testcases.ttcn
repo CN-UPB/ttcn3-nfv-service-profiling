@@ -11,7 +11,6 @@ module TSP_Testcases {
         timer serviceprofiling_timeout;
 
         var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
-        var moduloMatrix mmatrix := f_create_modulo_list_for_additional_parameters(spe);
 
         var integer run := 0;
 
@@ -22,51 +21,17 @@ module TSP_Testcases {
                 paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[vcpu_index];
 
                 // Memory
-                for(var integer memory_index := 0; j < sizeof(spe.paramcfgs[current_param].memory); j := j + 1) {
+                for(var integer memory_index := 0; memory_index < sizeof(spe.paramcfgs[current_param].memory); memory_index := memory_index + 1) {
                     paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[memory_index];
 
-                    // Additional Parameters
-                    var float last_element_add_param;
-                    select union (valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter)) {
-                        case (macro) {
-                                        last_element_add_param := valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter.macro.max);
-                                     }
-                        case (list) {
-                                        var integer last_element_index := sizeof(spe.paramcfgs[current_param].additional_parameters[0].parameter.list)
-                                        last_element_add_param := valueof(spe.paramcfgs[current_param].additional_parameters[0].parameter.list[last_element_index]);
-                                    }
-                    }
-                    while(str2float(valueof(paramcfgs[current_param].additional_parameters[0].input)) != last_element_add_param) {
-                        var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters);
-
-                        // Increment last parameter
-                        f_increment_parameter_config(paramcfgs, spe, current_param, last_param_index);
-
-                        for(var integer i := last_param_index - 1; i > 0; i := i - 1) {
-							select union(valueof(spe.paramcfgs[current_param].additional_parameters[i].parameter)) {
-								case (macro) {
-                                                // Stop processing if this is not the last element in the macro
-                                                if(paramcfgs[current_param].additional_parameters[last_param_index].input <= str2float(valueof(spe.paramcfgs[current_param].additional_parameters[last_param_index].macro.max)) {
-                                                    break;
-                                                } else {
-                                                    f_increment_parameter_config(paramcfgs, spe, current_param, i);
-                                                    input[i-1] := next element
-                                                }
-											 }
-                                case (list) {
-                                                // Stop processing if we are the last element
-                                                if(not_last_element) { break };
-                                            }
-							}
-						}
-                              
-                    }
-
+                    // Run until we reached the last element (determined later)
+                    var boolean last_element_not_reached := true;
+                    while(last_element_not_reached) {
                         template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs};
                         Mano.send(param_config_request);
 
                         // Repetitions
-                        for(var integer n := 0; n < valueof(spe.repetitions); n := n + 1) {
+                        for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
                             template Setup_SFC setup_sfc_req := { spe.service_name }
                             Mano.send(setup_sfc_req);
 
@@ -89,6 +54,7 @@ module TSP_Testcases {
                                     // We received a metric
                                     template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs, run };
                                     Report.send(save_metric_request);
+									setverdict ( pass );
                                    }
                                 [] Mano.receive {
                                     // We received junk and that should not happen
@@ -106,14 +72,34 @@ module TSP_Testcases {
                             Mano.send(cleanup_req);
 
                             run := run + 1;
+
+                            // Increment last parameter
+                            var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters) - 1;
+                            f_increment_parameter_config(paramcfgs, spe, current_param, last_param_index);
+
+                            // Check for overflows starting from the last parameter
+                            // This works like an odometer
+                            for(var integer i := last_param_index; i > 0; i := i - 1) {
+                                // If there is an overflow, set it to the initial value and increment
+                                // he previous value
+                                if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i)) {
+                                    f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i);
+                                    f_increment_parameter_config(paramcfgs, spe, current_param, i-1);
+                                    
+                                    if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i-1)) {
+                                        // We tested the last element, so stop the additional parameter loop
+                                        f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i-1); // TODO: Needed?
+                                        last_element_not_reached := false
+                                    }
+                                } else {
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-
-
-        setverdict ( pass );
         stop
+        }
     }
 }

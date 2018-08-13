@@ -1,0 +1,54 @@
+module TSPF_snort_iperf3_test {
+    import from TSP_Types all;
+    import from TSP_Templates_Agents all;
+    import from TSP_Testcases all;
+
+    template ParameterConfigurationMacros paramcfg := {
+        {
+            function_id := "snort-vnf",
+            vcpus := { 4 },
+            memory := { 4096 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_bw", { macro := {
+                    min := 0.1,
+                    max := 1.0,
+                    step := 0.3 }
+                }},
+		{ "memswap_limit", { list :=
+			{ 4096, 8192}
+		}}
+            }
+        }
+    };
+
+    template Agents agent_list := {
+        iperf3server("snort_vnf:output"),
+        iperf3client("snort_vnf:input")
+    };
+
+    template Monitors monitor_list := {
+        {
+            vnf_name := "snort_vnf",
+            metrics := {
+                "cpu-utilization",
+                "memory-maximum",
+                "memory"
+            }
+        }
+    };
+
+    template TSP_Experiment spexperiment := {
+        name := "snort-iperf3",
+        repetitions := 1,
+        profiling_timeout := 300.0,
+        service_name := "sonata-snort-service.son",
+        paramcfgs := paramcfg,
+        agents := agent_list,
+        monitors := monitor_list
+    };
+
+    control {
+        execute(SimpleTSP(spexperiment));
+    };
+}
