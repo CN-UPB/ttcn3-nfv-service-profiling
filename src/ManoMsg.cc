@@ -15,6 +15,7 @@
 #include <thread>
 #include <regex>
 #include <future>
+#include <algorithm>
 
 
 using namespace utility;
@@ -156,6 +157,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 
     sfc_service_uuid = uploadPackage(filepath);
     sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
+    apply_additional_parameters_for_sfc();
 
     log("SFC created and running");
 }
@@ -294,30 +296,30 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         int memory = (const int)parameters[i].memory();
         int storage = (const int)parameters[i].storage();
 
-        // TODO
         // Additional parameter configuration values
-        //auto rvalues = (const TSP__Types::RessourceValues)send_par.resourcecfg().resource__values();
-        //for(int i = 0; i < rvalues.size_of() ; i++) {
-        //    if(rvalues[i].name() == "vcpu") {
-        //        vcpus = rvalues[i].actual__value();
-        //    } else if(rvalues[i].name() == "memory") {
-        //        memory = rvalues[i].actual__value();
-        //    }
-        //}
+        // We cannot handle this here, so we save them for later use, when we instantiate the SFC
+        if(parameters[i].additional__parameters().ispresent()) {
+            auto additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
+            for(int j = 0; j < additional_parameters.size_of() ; j++) {
+                std::string additional_parameter_name((const char*)additional_parameters[j].name());
+                std::string additional_parameter_value((const char*)additional_parameters[j].input());
+                vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
+            }
+        }
 
-        log("Setting resource configuration of VNF %s", vnf_name.c_str());
+		// We have to replace _ with - because of file structure
+		std::replace(vnf_name.begin(), vnf_name.end(), '_', '-');
 
-        // TODO
+        log("Setting parameter configuration of VNF %s", vnf_name.c_str());
+
         std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "-vnfd.yml";
-        //std::string filename = "/home/dark/son-examples/service-projects/sonata-snort-service-emu/sources/vnf/snort-vnf/snort-vnfd.yml";
-
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
         std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
         log("Command: %s", cmd.c_str());
 
-        std::system(cmd.c_str());
+        start_local_program(cmd);
     }
 
     // Create the service package
@@ -331,7 +333,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     //        boost::process::std_out > boost::process::null,
     //        boost::process::std_err > boost::process::null);
 
-    log("Setting resource configuration of SFC %s completed", service_name.c_str());
+    log("Setting parameter configuration of SFC %s completed", service_name.c_str());
 }
 
 void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
@@ -506,6 +508,44 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
     }
 
     log("Stopped service");
+}
+
+/**
+ * Applies the additional parameters that were parsed when the Set_Parameter_Config Reply was sent
+ */
+void ManoMsg::apply_additional_parameters_for_sfc() {
+    log("Setting additional parameters");
+    for(const auto& vnf_map : vnf_additional_parameters) {
+        std::string vnf_name(vnf_map.first);
+
+        for(const auto& parameter_map : vnf_map.second) {
+            std::string parameter_name(parameter_map.first);
+            std::string value(parameter_map.second);
+
+            http_client client(docker_rest_url);
+            auto query_builder = uri_builder("/restapi/compute/resources/dc1/" + vnf_name); // TODO: dc1 configureable
+            query_builder.set_query(parameter_name + "=" + value);
+
+            auto query = query_builder.to_string();
+
+            http_request req(methods::PUT);
+            req.set_request_uri(query);
+
+            try {
+                http_response response = client.request(req).get();
+
+                if(response.status_code() == status_codes::OK) {
+                    log("Setting the parameter %s of %s to %s was successful", parameter_name.c_str(), vnf_name.c_str(), value.c_str());
+                } else {
+                    TTCN_error("Could not set the parameter %s of %s to %s, status_code: %d", parameter_name.c_str(), vnf_name.c_str(), value.c_str(), response.status_code());
+                }
+            } catch (const http_exception &e) {
+                TTCN_error("Could not set the parameter %s of %s to %s: %s", parameter_name.c_str(), vnf_name.c_str(), value.c_str(), e.what());
+            }
+
+        }
+    }
+    log("Finished setting additional parameters");
 }
 
 /**
@@ -708,8 +748,8 @@ std::string ManoMsg::start_local_program(std::string command) {
 
 
     log("test2");
-	try {
-		auto output = data.get();
+    try {
+        auto output = data.get();
         if(output.size() > 0) {
             output.pop_back(); // Delete last character, e.g. last newline
         }

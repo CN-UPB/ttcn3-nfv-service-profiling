@@ -39,6 +39,7 @@ private:
 	std::vector<std::string> running_agents;
     std::map<std::string, std::string> ip_agents;
     std::vector<std::future<std::map<std::string, std::map<std::string, std::vector<std::string>>>>> monitor_futures;
+    std::map<std::string, std::map<std::string, std::string>> vnf_additional_parameters; // vnf_name -> { parameter, value }
 
 	/* Config parameters */
 	std::string vnf_path;
@@ -54,6 +55,7 @@ private:
 	void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 	std::string uploadPackage(std::string filepath);
 	std::string startSfcService(std::string service_uuid);
+    void apply_additional_parameters_for_sfc();
 	void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
 	void connectAgentToSfc(std::string vnf_name, std::string vnf_cp);
 	void startAgent(std::string vnf_name, std::string vnf_image);

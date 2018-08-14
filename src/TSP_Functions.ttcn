@@ -64,7 +64,7 @@ module TSP_Functions {
                     paramcfgs[index_current_param].additional_parameters[index_add_param].input := "overflow";
                 } else {
                     log("No overflow for ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
-                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := int2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list[index_current_param+1]));
+                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := int2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list[index_current_element+1]));
                 }
             }
         }

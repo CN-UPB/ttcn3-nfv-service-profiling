@@ -5,9 +5,9 @@ module TSPF_snort_iperf3_test {
 
     template ParameterConfigurationMacros paramcfg := {
         {
-            function_id := "snort-vnf",
+            function_id := "snort_vnf",
             vcpus := { 4 },
-            memory := { 4096 },
+            memory := { 4096},
             storage := { 10 },
             additional_parameters := {
                 { "cpu_bw", { macro := {
@@ -15,9 +15,9 @@ module TSPF_snort_iperf3_test {
                     max := 1.0,
                     step := 0.3 }
                 }},
-		{ "memswap_limit", { list :=
-			{ 4096, 8192}
-		}}
+				{ "memswap_limit", { list :=
+					{ 4096, 8192, 9000, 10000 }
+				}}
             }
         }
     };
