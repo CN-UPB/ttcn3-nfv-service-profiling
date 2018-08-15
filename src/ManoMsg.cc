@@ -157,6 +157,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 
     sfc_service_uuid = uploadPackage(filepath);
     sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     apply_additional_parameters_for_sfc();
 
     log("SFC created and running");
@@ -522,7 +523,7 @@ void ManoMsg::apply_additional_parameters_for_sfc() {
             std::string parameter_name(parameter_map.first);
             std::string value(parameter_map.second);
 
-            http_client client(docker_rest_url);
+            http_client client(vimemu_rest_url);
             auto query_builder = uri_builder("/restapi/compute/resources/dc1/" + vnf_name); // TODO: dc1 configureable
             query_builder.set_query(parameter_name + "=" + value);
 
