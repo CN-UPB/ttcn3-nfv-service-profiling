@@ -30,10 +30,11 @@ module TSPF_snort_iperf3 {
     template Monitors monitor_list := {
         {
             vnf_name := "snort_vnf",
+            interval := 1,
             metrics := {
                 "cpu-utilization",
                 "memory-maximum",
-                "memory"
+                "memory-current"
             }
         }
     };

@@ -38,6 +38,7 @@ module TSPF_empty_iperf3 {
     template Monitors monitor_list := {
         {
             vnf_name := "empty-vnf1",
+            interval := 1,
             metrics := {
                 "cpu-utilization",
                 "memory-maximum",

@@ -256,26 +256,93 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                     boost::process::std_out > boost::process::null,
                     boost::process::std_err > boost::process::null);
         } else {
+            // Get the command output
             auto command_stdout = start_local_program(command);
+            auto agent_metric = OutputParser::parse(command_stdout, output_parser);
 
-            auto metric = OutputParser::parse(command_stdout, output_parser);
+            // Stop all monitors
+            for(const auto & monitor : monitor_objects) {
+                monitor->stop();
+                delete monitor;
+            }
+            monitor_objects.clear();
+
+            // Construct the reply
+            TSP__Types::Monitor__Metrics monitor_metrics;
 
             for(auto & future : monitor_futures) {
-                try {
-                    std::map<std::string, std::map<std::string, std::vector<std::string>>> test = future.get();
-					for(auto el : test) {
-						log("Key %s", el.first.c_str());
-					}
-                    log("Monitor Output Size: %lu", test.size()); //["snort_vnf"]["cpu_stats"][0].c_str());
-                    log("Monitor Output: %s", test["snort_vnf"]["cpu_stats"][0].c_str());
-                } catch(const std::exception& e) {
-                    log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
-                }
+            try {
+                    std::map<std::string, std::map<std::string, std::vector<std::string>>> metrics_vnfs = future.get();
+                    log("Monitor Output Size: %lu", metrics_vnfs.size()); //["snort_vnf"]["cpu_stats"][0].c_str());
+                    log("Monitor Output: %s", metrics_vnfs["snort_vnf"]["cpu-utilization"][0].c_str());
+					for(auto metric_vnf : metrics_vnfs ) {
+                        TSP__Types::Monitor__Metric monitor_metric;
+                        monitor_metric.vnf__name() = CHARSTRING(metric_vnf.first.c_str());
+
+						log("Key %s", metric_vnf.first.c_str());
+                        for(auto & metric_specifier : metric_vnf.second) {
+                            if(metric_specifier.first == "interval") {
+                                for(auto & interval : metric_specifier.second) {
+                                    monitor_metric.interval() = std::atoi(interval.c_str());
+                                    break;
+                                }
+                            } else if(metric_specifier.first == "cpu-utilization") {
+                                for(auto & metric : metric_specifier.second) {
+                                    CHARSTRING metric_value(metric.c_str());
+                                    int index_next_element;
+                                    if(monitor_metric.cpu__utilization__list().is_bound()) {
+                                        index_next_element = monitor_metric.cpu__utilization__list().size_of();
+                                        monitor_metric.cpu__utilization__list()[index_next_element] = metric_value;
+                                    } else {
+                                        index_next_element = 0;
+                                    }
+                                    monitor_metric.cpu__utilization__list()[index_next_element] = metric_value;
+                                }
+                            } else if(metric_specifier.first == "memory-maximum") {
+                                for(auto & metric : metric_specifier.second) {
+                                    CHARSTRING metric_value(metric.c_str());
+                                    int index_next_element;
+                                    if(monitor_metric.memory__maximum__list().is_bound()) {
+                                        index_next_element = monitor_metric.memory__maximum__list().size_of();
+                                        monitor_metric.memory__maximum__list()[index_next_element] = metric_value;
+                                    } else {
+                                        index_next_element = 0;
+                                    }
+                                    monitor_metric.memory__maximum__list()[index_next_element] = metric_value;
+                                }
+                            } else if(metric_specifier.first == "memory-current") {
+                                for(auto & metric : metric_specifier.second) {
+                                CHARSTRING metric_value(metric.c_str());
+                                int index_next_element;
+                                if(monitor_metric.memory__current__list().is_bound()) {
+                                    index_next_element = monitor_metric.memory__current__list().size_of();
+                                    monitor_metric.memory__current__list()[index_next_element] = metric_value;
+                                } else {
+                                    index_next_element = 0;
+                                }
+                                monitor_metric.memory__current__list()[index_next_element] = metric_value;
+                            }
+                            }
+                        }
+
+                        int index_mm_next_element;
+                        if(monitor_metrics.is_bound()) {
+                            index_mm_next_element = monitor_metrics.size_of() + 1;
+                        } else {
+                            index_mm_next_element = 0;
+                        }
+
+                        monitor_metrics[index_mm_next_element] = monitor_metric;
+                    }
+            } catch(const std::exception& e) {
+                log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
+            }
             }
             monitor_futures.clear();
 
             TSP__Types::Start__CMD__Reply cmd_reply;
-            cmd_reply.metric() = CHARSTRING(metric.c_str());
+            cmd_reply.metric() = CHARSTRING(agent_metric.c_str());
+            cmd_reply.monitor__metrics() = monitor_metrics;
             incoming_message(cmd_reply);
         }
     }
@@ -312,8 +379,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
             }
         }
 
-		// We have to replace _ with - because of file structure
-		std::replace(vnf_name.begin(), vnf_name.end(), '_', '-');
+        // We have to replace _ with - because of file structure
+        std::replace(vnf_name.begin(), vnf_name.end(), '_', '-');
 
         log("Setting parameter configuration of VNF %s", vnf_name.c_str());
 
@@ -333,29 +400,27 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     auto son_cmd_output = start_local_program(son_cmd);
 
     log("Command output: %s", son_cmd_output.c_str());
-    //boost::process::spawn(son_cmd,
-    //        boost::process::std_in.close(),
-    //        boost::process::std_out > boost::process::null,
-    //        boost::process::std_err > boost::process::null);
 
     log("Setting parameter configuration of SFC %s completed", service_name.c_str());
 }
 
 void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
     std::string service_name((const char*)send_par.service__name());
-    int interval = ((const int)send_par.interval());
 
     for(int i = 0; i < send_par.monitors().size_of(); i++) {
         std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
+        int interval = ((const int)send_par.monitors()[i].interval());
         auto metrics = (const TSP__Types::Metrics)send_par.monitors()[i].metrics();
 
         std::vector<std::string> metrics_vec;
         for(int n = 0; n < metrics.size_of(); n++) {
             metrics_vec.push_back(std::string(metrics[n]));
         }
-        
-		log("Starting Monitor for %s, Docker API URL: %s", vnf_name.c_str(), docker_rest_url.c_str());
-        auto monitor = new ManoMsg::Monitor(vnf_name, metrics_vec, docker_rest_url);
+
+        log("Starting Monitor for %s, Interval: %d, Docker API URL: %s", vnf_name.c_str(), interval, docker_rest_url.c_str());
+        auto monitor = new ManoMsg::Monitor(vnf_name, metrics_vec, interval, docker_rest_url);
+
+        monitor_objects.push_back(monitor);
 
         monitor_futures.push_back(std::move(monitor->run()));
     }
@@ -723,7 +788,6 @@ std::string ManoMsg::start_local_program(std::string command) {
     }
 
 
-    log("test2");
     try {
         auto output = data.get();
         if(output.size() > 0) {
@@ -734,20 +798,43 @@ std::string ManoMsg::start_local_program(std::string command) {
     } catch (const boost::process::process_error &e) {
         TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
     }
-    log("test3");
+
+    // The method should never come here
     return "";
 }
 
-ManoMsg::Monitor::Monitor(std::string vnf_name, std::vector<std::string> metrics, std::string docker_rest_url) {
-            this->vnf_name = vnf_name;
-            this->metrics = metrics;
-            this->docker_rest_url = docker_rest_url;
+ManoMsg::Monitor::Monitor(std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url) {
+    this->vnf_name = vnf_name;
+    this->metrics = metrics;
+    this->docker_rest_url = docker_rest_url;
+    this->interval = interval;
+}
+
+double ManoMsg::Monitor::calculate_cpu_percent(web::json::value json) {
+    // The following algorithm is based on the Moby Project:
+    // https://github.com/moby/moby/blob/eb131c5383db8cac633919f82abad86c99bffbe5/cli/command/container/stats_helpers.go#L175
+    double cpu_utilization = 0.0;
+
+    uint64_t cpu_total = json["cpu_stats"]["cpu_usage"]["total_usage"].as_number().to_uint64();
+    uint64_t pre_cpu_total = json["precpu_stats"]["cpu_usage"]["total_usage"].as_number().to_uint64();
+    uint64_t cpu_system = json["cpu_stats"]["system_cpu_usage"].as_number().to_uint64();
+    uint64_t pre_cpu_system_total =  json["precpu_stats"]["system_cpu_usage"].as_number().to_uint64();
+    uint64_t number_of_cpus = json["cpu_stats"]["online_cpus"].as_number().to_uint64();
+
+    double cpu_delta = double(cpu_total) - double(pre_cpu_total);
+    double system_delta = double(cpu_system) - double(pre_cpu_system_total);
+
+    if(cpu_total > 0 && system_delta > 0) {
+        cpu_utilization = (cpu_delta / system_delta) * number_of_cpus * 100;
+    }
+
+    return cpu_utilization;
 }
 
 std::future<std::map<std::string, std::map<std::string, std::vector<std::string>>>> ManoMsg::Monitor::run() {
-	std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>(std::string vnf_name, std::vector<std::string> metrics, std::string docker_rest_url, boolean* running)> collectMonitorMetric = [](std::string vnf_name, std::vector<std::string> metrics, std::string docker_rest_url, boolean* running) {
+    std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>(std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url, boolean* running)> collectMonitorMetric = [](std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url, boolean* running) {
+        std::map<std::string, std::vector<std::string>> metric_values;
         while(*running) {
-            std::map<std::string, std::vector<std::string>> metric_values;
             http_client client(docker_rest_url);
             auto query = uri_builder("/containers/mn." + vnf_name + "/stats").set_query("stream=0").to_string();
 
@@ -755,34 +842,47 @@ std::future<std::map<std::string, std::map<std::string, std::vector<std::string>
             http_request req(methods::GET);
             req.set_request_uri(query);
 
-            try {
-                http_response response = client.request(req).get();
+            http_response response = client.request(req).get();
 
-                if(response.status_code() == status_codes::OK) {
-                    auto json_reply = response.extract_json().get();
-                    auto cpu_stats = json_reply.at("cpu_stats");
+            if(response.status_code() == status_codes::OK) {
+                auto json_reply = response.extract_json().get();
 
-                    metric_values["cpu_stats"].push_back(cpu_stats.serialize());
+                if(std::find(metrics.begin(), metrics.end(), "cpu-utilization") != metrics.end()) {
+                    double cpu_percent = ManoMsg::Monitor::calculate_cpu_percent(json_reply);
+                    metric_values["cpu-utilization"].push_back(std::to_string(cpu_percent));
                 }
-            } catch (const http_exception &e) {
-                // Something is broken and we do not handle exceptions yet
-            }
-            //std::this_thread::sleep_for(std::chrono::seconds(interval));
 
-            return output;
+                if(std::find(metrics.begin(), metrics.end(), "memory-maximum") != metrics.end()) {
+                    uint64_t max_usage = json_reply["memory_stats"]["max_usage"].as_number().to_uint64() / 1024 / 1024;
+                    metric_values["memory-maximum"].push_back(std::to_string(max_usage));
+                }
+
+                if(std::find(metrics.begin(), metrics.end(), "memory-current") != metrics.end()) {
+                    uint64_t usage = json_reply["memory_stats"]["usage"].as_number().to_uint64() / 1024 / 1024;
+                    metric_values["memory-current"].push_back(std::to_string(usage));
+                }
+            } else if(response.status_code() == status_codes::NotFound) {
+                // The VNF is not running anymore
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(interval));
         }
-        
+
+        metric_values["interval"].push_back(std::to_string(interval));
+
         //metric_values["cpu_stats"].push_back(docker_rest_url);
         // Wait for specified interval
         std::map<std::string, std::map<std::string, std::vector<std::string>>> output;
         output[vnf_name] = metric_values;
+
+        return output;
     };
 
     this->running = true;
-    return std::async(std::launch::async, collectMonitorMetric, vnf_name, metrics, docker_rest_url, &running);
+    return std::async(std::launch::async, collectMonitorMetric, vnf_name, metrics, interval, docker_rest_url, &running);
 }
 
-void ManoMsg::Monitor::run() {
+void ManoMsg::Monitor::stop() {
     this->running = false;
 }
 

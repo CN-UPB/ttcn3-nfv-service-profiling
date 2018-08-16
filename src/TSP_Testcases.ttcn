@@ -39,7 +39,7 @@ module TSP_Testcases {
                             Mano.send(add_agents_request);
 
                             if(ispresent(spe.monitors)) {
-                                template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors, 1 };
+                                template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors };
                                 Mano.send(add_monitors_request);
                             }
 

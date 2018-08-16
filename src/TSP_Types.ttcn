@@ -69,6 +69,7 @@ module TSP_Types {
 
   type record Monitor {
       charstring vnf_name,
+      integer interval,
       Metrics metrics
   };
 
@@ -78,8 +79,7 @@ module TSP_Types {
 
   type record Add_Monitors {
       charstring service_name,
-      Monitors monitors,
-      integer interval
+      Monitors monitors
   };
 
   type record Add_Agents {
@@ -99,10 +99,14 @@ module TSP_Types {
       Monitor_Metrics monitor_metrics
   };
 
-  type record Monitor_Metrics {
-      Monitor monitor,
-      Metrics metrics
-  };
+  type record Monitor_Metric {
+	charstring vnf_name,
+	integer interval,
+	Metrics cpu_utilization_list,
+	Metrics memory_maximum_list,
+	Metrics memory_current_list
+  }
+  type record of Monitor_Metric Monitor_Metrics;
 
   type record of charstring Metrics;
 
