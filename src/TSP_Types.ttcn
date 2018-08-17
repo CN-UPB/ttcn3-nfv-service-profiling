@@ -123,17 +123,8 @@ module TSP_Types {
   type record Save_Metric {
       charstring experiment_name,
       charstring metric,
+      Monitor_Metrics monitor_metrics,
       ParameterConfigurations paramcfgs,
       integer run
   };
-
-  type record Save_Monitor_Metric {
-      charstring experiment_name,
-      charstring vnf_name,
-      charstring metric,
-      integer run
-  };
-
-  type record of integer moduloList;
-  type record of moduloList moduloMatrix;
 }

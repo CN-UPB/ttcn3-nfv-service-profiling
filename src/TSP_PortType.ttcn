@@ -13,7 +13,6 @@ module TSP_PortType {
 
   type port Reporter message {
       out Save_Metric;
-      out Save_Monitor_Metric;
   }
   
   type component MANO {

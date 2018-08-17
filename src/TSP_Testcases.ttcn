@@ -52,7 +52,7 @@ module TSP_Testcases {
                             alt {
                                 [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
                                     // We received a metric
-                                    template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, paramcfgs, run };
+                                    template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, cmd_reply.monitor_metrics, paramcfgs, run };
                                     Report.send(save_metric_request);
 									setverdict ( pass );
                                    }

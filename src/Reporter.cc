@@ -1,8 +1,11 @@
 #include "Reporter.hh"
+#include <boost/filesystem.hpp>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <ctime>
+#include <sstream>
 
 namespace TSP__PortType {
 
@@ -47,6 +50,16 @@ void Reporter::Handle_Fd_Event_Readable(int /*fd*/)
 
 void Reporter::user_map(const char * /*system_port*/)
 {
+    // Create current time as a string
+    time_t now = time(nullptr);
+    tm ltm = *localtime(&now);
+    std::ostringstream os;
+    os << 1970 + ltm.tm_year << "-" << 1 + ltm.tm_mon << "-" << ltm.tm_mday;
+    os << "-" << 1 + ltm.tm_hour << 1 + ltm.tm_min << 1 + ltm.tm_sec << std::endl;
+
+    subdirectory = std::string(os.str());
+
+    boost::filesystem::create_directory(output_dir + subdirectory);
 }
 
 void Reporter::user_unmap(const char * /*system_port*/)
@@ -65,9 +78,15 @@ void Reporter::user_stop()
 
 void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 {
+    save_metric(send_par);
+    save_monitor_metrics(send_par);
+}
+
+void Reporter::save_metric(const TSP__Types::Save__Metric& send_par) 
+{
     std::ofstream csvfile;
     std::string filename((const char*)send_par.experiment__name());
-    csvfile.open(output_dir + filename, std::ios_base::app);
+    csvfile.open(output_dir + subdirectory + filename, std::ios_base::app);
 
     int run = (const int)send_par.run();
 
@@ -117,7 +136,8 @@ void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
     csvfile.close();
 }
 
-void Reporter::outgoing_send(const TSP__Types::Save__Monitor__Metric& send_par) {
+void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par)
+{
 }
 
 // TODO: Place logging function to a helper class

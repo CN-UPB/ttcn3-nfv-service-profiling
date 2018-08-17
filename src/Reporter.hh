@@ -17,6 +17,7 @@ public:
 private:
     bool debug;
     bool header;
+    std::string subdirectory;
     std::string output_dir;
 	/* void Handle_Fd_Event(int fd, boolean is_readable,
 		boolean is_writable, boolean is_error); */
@@ -26,6 +27,9 @@ private:
 	/* void Handle_Timeout(double time_since_last_call); */
     void log(const char *fmt, ...);
 
+    void save_metric(const TSP__Types::Save__Metric& send_par);
+    void save_monitor_metrics(const TSP__Types::Save__Metric& send_par);
+
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);
@@ -34,7 +38,6 @@ protected:
 	void user_stop();
 
 	void outgoing_send(const TSP__Types::Save__Metric& send_par);
-	void outgoing_send(const TSP__Types::Save__Monitor__Metric& send_par);
 };
 
 } /* end of namespace */
