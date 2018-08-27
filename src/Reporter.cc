@@ -1,11 +1,14 @@
+#define BOOST_FILESYSTEM_NO_DEPRECATED
+
 #include "Reporter.hh"
 #include <boost/filesystem.hpp>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <ctime>
 #include <sstream>
+#include <iomanip>
+#include <ctime>
 
 namespace TSP__PortType {
 
@@ -51,15 +54,15 @@ void Reporter::Handle_Fd_Event_Readable(int /*fd*/)
 void Reporter::user_map(const char * /*system_port*/)
 {
     // Create current time as a string
-    time_t now = time(nullptr);
-    tm ltm = *localtime(&now);
+    auto time = std::time(nullptr);
+    auto tm = *std::localtime(&time);
     std::ostringstream os;
-    os << 1970 + ltm.tm_year << "-" << 1 + ltm.tm_mon << "-" << ltm.tm_mday;
-    os << "-" << 1 + ltm.tm_hour << 1 + ltm.tm_min << 1 + ltm.tm_sec << std::endl;
+    os << std::put_time(&tm, "%Y-%m-%d-%H-%M-%S");
 
     subdirectory = std::string(os.str());
 
-    boost::filesystem::create_directory(output_dir + subdirectory);
+    full_path = output_dir / subdirectory;
+    boost::filesystem::create_directory(full_path);
 }
 
 void Reporter::user_unmap(const char * /*system_port*/)
@@ -85,8 +88,14 @@ void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 void Reporter::save_metric(const TSP__Types::Save__Metric& send_par) 
 {
     std::ofstream csvfile;
-    std::string filename((const char*)send_par.experiment__name());
-    csvfile.open(output_dir + subdirectory + filename, std::ios_base::app);
+    boost::filesystem::path filename((const char*)send_par.experiment__name());
+    boost::filesystem::path csvfile_path = full_path / filename;
+    log("Csvfile path: %s", full_path.c_str());
+    csvfile.open(csvfile_path.string(), std::ios_base::app);
+
+    if(csvfile.fail()) {
+        TTCN_error("Could not open CSV file. Path: %s", csvfile_path.c_str());
+    }
 
     int run = (const int)send_par.run();
 
@@ -136,8 +145,32 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
     csvfile.close();
 }
 
-void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par)
-{
+void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par) {
+    boost::filesystem::path filename((const char*)send_par.experiment__name());
+    int run = (const int)send_par.run();
+    auto monitor_metrics = (const TSP__Types::Monitor__Metrics)send_par.monitor__metrics();
+
+    for(int i = 0; i < monitor_metrics.size_of(); i++) {
+        std::string vnf_name(monitor_metrics[i].vnf__name());
+
+        // CPU utilization
+        std::ofstream csvfile;
+        std::string filename = vnf_name + ":cpu_utilization";
+
+        boost::filesystem::path cpu_util_csv = full_path / filename;
+        csvfile.open(cpu_util_csv.string(), std::ios_base::app);
+
+        if(csvfile.fail()) {
+            TTCN_error("Could not open csv file for cpu utilization");
+        }
+
+        for(int j = 0; j < monitor_metrics[i].cpu__utilization__list().size_of(); j++) {
+            csvfile << run << "," << monitor_metrics[i].cpu__utilization__list()[j] << std::endl;
+        }
+
+        csvfile.close();
+    }
+
 }
 
 // TODO: Place logging function to a helper class

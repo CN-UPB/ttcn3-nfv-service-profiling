@@ -3,6 +3,7 @@
 
 #include "TSP_PortType.hh"
 #include <string>
+#include <boost/filesystem.hpp>
 
 namespace TSP__PortType {
 
@@ -17,8 +18,9 @@ public:
 private:
     bool debug;
     bool header;
-    std::string subdirectory;
-    std::string output_dir;
+    boost::filesystem::path subdirectory;
+    boost::filesystem::path output_dir;
+    boost::filesystem::path full_path;
 	/* void Handle_Fd_Event(int fd, boolean is_readable,
 		boolean is_writable, boolean is_error); */
 	void Handle_Fd_Event_Error(int fd);

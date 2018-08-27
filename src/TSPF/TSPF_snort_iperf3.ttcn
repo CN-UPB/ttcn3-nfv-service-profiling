@@ -5,7 +5,7 @@ module TSPF_snort_iperf3 {
 
     template ParameterConfigurationMacros paramcfg := {
         {
-            function_id := "snort-vnf",
+            function_id := "snort_vnf",
             vcpus := { 1,2,3,4 },
             memory := { 2048, 4096, 6192 },
             storage := { 10 },

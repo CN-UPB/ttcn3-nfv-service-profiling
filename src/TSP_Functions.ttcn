@@ -10,40 +10,43 @@ module TSP_Functions {
     function f_create_starting_parameter_config(template TSP_Experiment spe) return template ParameterConfigurations {
         var template ParameterConfigurations rcfgs := {};
 
-        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
-            // Main parameter configs
-            var integer vcpus := valueof(spe.paramcfgs[i].vcpus[0]);
-            var integer memory := valueof(spe.paramcfgs[i].memory[0]);
-            var integer storage := valueof(spe.paramcfgs[i].storage[0]);
+            for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+                // Main parameter configs
+                var integer vcpus := valueof(spe.paramcfgs[i].vcpus[0]);
+                var integer memory := valueof(spe.paramcfgs[i].memory[0]);
+                var integer storage := valueof(spe.paramcfgs[i].storage[0]);
 
-            // Additional parameter configs
-            var template ParameterValues additional_param_values := {};
-            if(isbound(spe.paramcfgs[i].additional_parameters)) {
-                for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
-                    template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
-                    select union (valueof(additional_parameter.parameter)) {
-                        case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
-                                        input := float2str(valueof(additional_parameter.parameter.macro.min)) };
-                                     }
-                        case (list) { additional_param_values[j] := { name := additional_parameter.name,
-                                        input := int2str(valueof(additional_parameter.parameter.list[0])) };
-                                    }
+                // Additional parameter configs
+                var template ParameterValues additional_param_values := {};
+                    if(isbound(spe.paramcfgs[i].additional_parameters)) {
+                        for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+                            template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
+                            select union (valueof(additional_parameter.parameter)) {
+                                case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
+                                    input := float2str(valueof(additional_parameter.parameter.macro.min)) };
+                                }
+                                case (list) { additional_param_values[j] := { name := additional_parameter.name,
+                                    input := int2str(valueof(additional_parameter.parameter.list[0])) };
+                                }
+                                case (floatlist) { additional_param_values[j] := { name := additional_parameter.name,
+                                    input := float2str(valueof(additional_parameter.parameter.floatlist[0])) };
+                                }
+                            }
+                        }
                     }
-                }
+
+                    var integer next_item := sizeof(rcfgs);
+                    rcfgs[next_item] := { function_id := valueof(spe.paramcfgs[i].function_id),
+                        vcpus := vcpus,
+                        memory := memory,
+                        storage := storage,
+                        additional_parameters := additional_param_values
+                    };
             }
-            
-            var integer next_item := sizeof(rcfgs);
-            rcfgs[next_item] := { function_id := valueof(spe.paramcfgs[i].function_id),
-                                  vcpus := vcpus,
-                                  memory := memory,
-                                  storage := storage,
-                                  additional_parameters := additional_param_values
-                              };
-        }
 
-        log("Created the following starting template: ", rcfgs);
+            log("Created the following starting template: ", rcfgs);
 
-        return rcfgs;
+            return rcfgs;
     }
 
     function f_increment_parameter_config(inout template ParameterConfigurations paramcfgs, template TSP_Experiment spe, integer index_current_param, integer index_add_param) {
@@ -53,7 +56,7 @@ module TSP_Functions {
                 paramcfgs[index_current_param].additional_parameters[index_add_param].input := float2str(str2float(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input)) + valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.macro.step));
             }
             case (list) {
-                log("Set next element from list for parameter %s", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                log("Set next element from list for parameter: ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
                 var integer index_current_element := f_find_index_for_element_in_parameterlist(str2int(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input)), valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list));
                 var integer index_last_element := sizeof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list) - 1;
 
@@ -67,21 +70,78 @@ module TSP_Functions {
                     paramcfgs[index_current_param].additional_parameters[index_add_param].input := int2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list[index_current_element+1]));
                 }
             }
+            case (floatlist) {
+                log("Set next element from float list for parameter: ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                var integer index_current_element := f_find_index_for_element_in_parameterfloatlist(str2float(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input)), valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.floatlist));
+                var integer index_last_element := sizeof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.floatlist) - 1;
+
+                // Check for overflow
+                if(index_current_element == index_last_element) {
+                    log("Overflow for parameter: ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                    // We set a special value for the overflow
+                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := "overflow";
+                } else {
+                    log("No overflow for ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := float2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.floatlist[index_current_element+1]));
+                }
+            }
+            case (charlist) {
+                log("Set next element from charstring list for parameter: ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                var integer index_current_element := f_find_index_for_element_in_parametercharlist(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input), valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.charlist));
+                var integer index_last_element := sizeof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.charlist) - 1;
+
+                // Check for overflow
+                if(index_current_element == index_last_element) {
+                    log("Overflow for parameter: ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                    // We set a special value for the overflow
+                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := "overflow";
+                } else {
+                    log("No overflow for ", paramcfgs[index_current_param].additional_parameters[index_add_param].name);
+                    paramcfgs[index_current_param].additional_parameters[index_add_param].input := valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.charlist[index_current_element+1]);
+                }
+            } 
         }
     }
 
     function f_set_parameter_config_to_initial_value(inout template ParameterConfigurations paramcfgs, template TSP_Experiment spe, integer index_current_param, integer index_add_param) {
         select union(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter)) {
             case (macro) {
-                            paramcfgs[index_current_param].additional_parameters[index_add_param].input := float2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.macro.min));
-                         }
+                paramcfgs[index_current_param].additional_parameters[index_add_param].input := float2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.macro.min));
+            }
             case (list) {
-                            paramcfgs[index_current_param].additional_parameters[index_add_param].input := int2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list[0]));
-                        }
+                paramcfgs[index_current_param].additional_parameters[index_add_param].input := int2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.list[0]));
+            }
+            case (floatlist) {
+                paramcfgs[index_current_param].additional_parameters[index_add_param].input := float2str(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.floatlist[0]));
+            }
+            case (charlist) {
+                paramcfgs[index_current_param].additional_parameters[index_add_param].input := valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter.charlist[0]);
+            }
         }
     }
 
     function f_find_index_for_element_in_parameterlist(integer element, ParameterList list) return integer {
+        for(var integer i := 0; i < sizeof(list); i := i + 1) {
+            if(valueof(list[i]) == element) {
+                return i;
+            }
+        }
+
+        // We did not find the value
+        return -1;
+    }
+
+    function f_find_index_for_element_in_parameterfloatlist(float element, ParameterFloatList list) return integer {
+        for(var integer i := 0; i < sizeof(list); i := i + 1) {
+            if(list[i] == element) {
+                return i;
+            }
+        }
+
+        // We did not find the value
+        return -1;
+    }
+    function f_find_index_for_element_in_parametercharlist(charstring element, ParameterCharList list) return integer {
         for(var integer i := 0; i < sizeof(list); i := i + 1) {
             if(list[i] == element) {
                 return i;
@@ -97,12 +157,20 @@ module TSP_Functions {
 
         select union (param_macro.additional_parameters[index].parameter) {
             case (macro) {
-                            last_element_add_param := valueof(param_macro.additional_parameters[index].parameter.macro.max);
-                         }
+                last_element_add_param := valueof(param_macro.additional_parameters[index].parameter.macro.max);
+            }
             case (list) {
-                            var integer last_element_index := sizeof(param_macro.additional_parameters[index].parameter.list)
-                            last_element_add_param := int2float(param_macro.additional_parameters[index].parameter.list[last_element_index]);
-                        }
+                var integer last_element_index := sizeof(param_macro.additional_parameters[index].parameter.list);
+                last_element_add_param := int2float(param_macro.additional_parameters[index].parameter.list[last_element_index]);
+            }
+            case (floatlist) {
+                var integer last_element_index := sizeof(param_macro.additional_parameters[index].parameter.floatlist);
+                last_element_add_param := param_macro.additional_parameters[index].parameter.floatlist[last_element_index];
+            }
+            case (charlist) {
+                var integer last_element_index := sizeof(param_macro.additional_parameters[index].parameter.charlist);
+                last_element_add_param := str2float(param_macro.additional_parameters[index].parameter.charlist[last_element_index]);
+            }
         }
 
         return last_element_add_param;
@@ -111,24 +179,27 @@ module TSP_Functions {
     function f_test_for_parameter_overflow(template ParameterConfigurations paramcfgs, template TSP_Experiment spe, integer index_current_param, integer index_add_param) return boolean {
         var boolean element_i_overflowed := true;
 
+        log("Test for overflow for: ", valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].name));
+
         select union(valueof(spe.paramcfgs[index_current_param].additional_parameters[index_add_param].parameter)) {
             case (macro) {
-                            if(str2float(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input)) <= f_get_last_element_from_parameter_macro(index_add_param, valueof(spe.paramcfgs[index_current_param]))) {
-                                log("Did not reach maxmimum of macro. Parameter name: ", valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].name));
-                                element_i_overflowed := false;
-                            }
-                         }
-            case (list) {
-                            if(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input) != "overflow") {
-                                log("Did not reach last element of list. Parameter name: ", valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].name));
-                                    element_i_overflowed := false;
-                            }
-                        }
+                if(str2float(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input)) <= f_get_last_element_from_parameter_macro(index_add_param, valueof(spe.paramcfgs[index_current_param]))) {
+                    log("Did not reach maxmimum of macro. Parameter name: ", valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].name));
+                    element_i_overflowed := false;
+                }
+            }
+            case else {
+            //case (list, charlist, floatlist) {
+                log(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input));
+                if(valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].input) != "overflow") {
+                    log("Did not reach last element of list. Parameter name: ", valueof(paramcfgs[index_current_param].additional_parameters[index_add_param].name));
+                    element_i_overflowed := false;
+                }
+            }
         }
 
         return element_i_overflowed;
     }
 
-            
 }
 

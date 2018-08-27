@@ -86,14 +86,16 @@ module TSP_Testcases {
                                     f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i);
                                     f_increment_parameter_config(paramcfgs, spe, current_param, i-1);
                                     
-                                    if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i-1)) {
-                                        // We tested the last element, so stop the additional parameter loop
-                                        f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i-1); // TODO: Needed?
-                                        last_element_not_reached := false
-                                    }
+                                    
                                 } else {
                                     break;
                                 }
+                            }
+                            
+                            if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, 0)) {
+                                // We tested the last element, so stop the additional parameter loop
+                                f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, 0);
+                                last_element_not_reached := false
                             }
                         }
                     }

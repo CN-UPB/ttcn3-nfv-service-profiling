@@ -38,18 +38,24 @@ module TSP_Types {
       charstring name,
       union {
         ParameterList list,
+        ParameterFloatList floatlist,
+        ParameterCharList charlist,
         ParameterMacro macro
       } parameter
   };
 
   type record of ParameterDef ParameterDefs;
 
-  type union ParameterUnion {
-      ParameterList list,
-      ParameterMacro macro
-  };
-
   type record of integer ParameterList;
+  type record of float ParameterFloatList;
+  type record of charstring ParameterCharList;
+
+  type union ParameterUnionList {
+      ParameterList list,
+      ParameterCharList charlist,
+      ParameterFloatList floatlist,
+      ParameterMacro macro
+  }
 
   type record ParameterValue {
       charstring name,
