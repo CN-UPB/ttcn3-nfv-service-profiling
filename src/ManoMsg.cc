@@ -251,10 +251,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
 
         if(output_parser.empty()) {
-            boost::process::spawn(command,
-                    boost::process::std_in.close(),
-                    boost::process::std_out > boost::process::null,
-                    boost::process::std_err > boost::process::null);
+            // TODO: Use start_local_program
+            start_local_program(command, true);
         } else {
             // Get the command output
             auto command_stdout = start_local_program(command);
@@ -768,40 +766,52 @@ void ManoMsg::stopDockerContainer() {
  * @param command Command that should be started
  * @return The stdout of the program
  */
-std::string ManoMsg::start_local_program(std::string command) {
+std::string ManoMsg::start_local_program(std::string command, bool background) {
     boost::asio::io_service ios;
 
     std::future<std::string> data;
     std::error_code ec;
 
-    boost::process::child c(command,
-            boost::process::std_in.close(),
-            boost::process::std_out > data,
-            boost::process::std_err > boost::process::null,
-            ec,
-            ios);
+    if(background) {
+        boost::process::spawn(command,
+                boost::process::std_in.close(),
+                boost::process::std_out > boost::process::null,
+                boost::process::std_err > boost::process::null,
+                ec);
+
+        if(ec.value() != boost::system::errc::success) {
+            TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
+        }
+    } else {
+        boost::process::child c(command,
+                boost::process::std_in.close(),
+                boost::process::std_out > data,
+                boost::process::std_err > boost::process::null,
+                ec,
+                ios);
 
 
-    try {
-        ios.run();
-    } catch(const boost::process::process_error &e) {
-        TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
-    }
-
-    if(ec.value() != boost::system::errc::success) {
-        TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
-    }
-
-
-    try {
-        auto output = data.get();
-        if(output.size() > 0) {
-            output.pop_back(); // Delete last character, e.g. last newline
+        try {
+            ios.run();
+        } catch(const boost::process::process_error &e) {
+            TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
         }
 
-        return output;
-    } catch (const boost::process::process_error &e) {
-        TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+        if(ec.value() != boost::system::errc::success) {
+            TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
+        }
+
+
+        try {
+            auto output = data.get();
+            if(output.size() > 0) {
+                output.pop_back(); // Delete last character, e.g. last newline
+            }
+
+            return output;
+        } catch (const boost::process::process_error &e) {
+            TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+        }
     }
 
     // The method should never come here

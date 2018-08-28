@@ -83,7 +83,7 @@ namespace TSP__PortType {
             void stopAgent(std::string vnf_name);
             void startDockerContainer();
             void stopDockerContainer();
-            std::string start_local_program(std::string);
+            std::string start_local_program(std::string, bool background=false);
 
 
         protected:
