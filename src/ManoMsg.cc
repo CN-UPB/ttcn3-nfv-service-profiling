@@ -778,6 +778,7 @@ std::string ManoMsg::start_local_program(std::string command) {
             boost::process::std_in.close(),
             boost::process::std_out > data,
             boost::process::std_err > boost::process::null,
+            ec,
             ios);
 
 
@@ -785,6 +786,10 @@ std::string ManoMsg::start_local_program(std::string command) {
         ios.run();
     } catch(const boost::process::process_error &e) {
         TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+    }
+
+    if(ec.value() != boost::system::errc::success) {
+        TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
     }
 
 

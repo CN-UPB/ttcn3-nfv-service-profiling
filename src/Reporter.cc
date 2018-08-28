@@ -62,7 +62,13 @@ void Reporter::user_map(const char * /*system_port*/)
     subdirectory = std::string(os.str());
 
     full_path = output_dir / subdirectory;
-    boost::filesystem::create_directory(full_path);
+
+    boost::system::error_code error_code;
+    boost::filesystem::create_directories(full_path, error_code);
+
+    if(error_code.value() != boost::system::errc::success) {
+        TTCN_error("Could not create directory %s, error code: %d", full_path.c_str(), error_code.value());
+    }
 }
 
 void Reporter::user_unmap(const char * /*system_port*/)
