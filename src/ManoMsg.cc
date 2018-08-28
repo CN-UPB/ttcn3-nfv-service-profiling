@@ -229,12 +229,12 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             std::ssub_match sub_match = match[1];
             std::string ip4_from_name = sub_match.str();
 
-            auto ip4_address = ip_agents[ip4_from_name];
-            std::string replacement = "$`" + ip4_address + "$'";
-            cmd = regex_replace(cmd, IP4, replacement);
+            auto ip4address = ip_agents[ip4_from_name];
+            cmd = regex_replace(cmd, IP4, ip4address);
+            log("Replaced IP4 in command. IP4 is: %s", ip4address.c_str());
         }
 
-        log("Starting command %s on vnf %s", cmd.c_str(), vnf_name.c_str());
+        log("Starting command \"%s\" on vnf %s", cmd.c_str(), vnf_name.c_str());
 
         std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
         start_local_program(ssh_start_cmd);
@@ -271,8 +271,6 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             for(auto & future : monitor_futures) {
             try {
                     std::map<std::string, std::map<std::string, std::vector<std::string>>> metrics_vnfs = future.get();
-                    log("Monitor Output Size: %lu", metrics_vnfs.size()); //["snort_vnf"]["cpu_stats"][0].c_str());
-                    log("Monitor Output: %s", metrics_vnfs["snort_vnf"]["cpu-utilization"][0].c_str());
 					for(auto metric_vnf : metrics_vnfs ) {
                         TSP__Types::Monitor__Metric monitor_metric;
                         monitor_metric.vnf__name() = CHARSTRING(metric_vnf.first.c_str());
@@ -340,7 +338,9 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
             TSP__Types::Start__CMD__Reply cmd_reply;
             cmd_reply.metric() = CHARSTRING(agent_metric.c_str());
-            cmd_reply.monitor__metrics() = monitor_metrics;
+            if(monitor_metrics.is_bound()) {
+                cmd_reply.monitor__metrics() = monitor_metrics;
+            }
             incoming_message(cmd_reply);
         }
     }

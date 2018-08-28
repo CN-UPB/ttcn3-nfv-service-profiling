@@ -4,7 +4,7 @@ module TSP_Templates_Agents {
     template Agent iperf3server(charstring cp) := {
         name := "server",
         connection_point := cp,
-        image := "iperf3-ssh",
+        image := "tsp-iperf3-ssh",
         cmd := "iperf3 -s"
     };
 
