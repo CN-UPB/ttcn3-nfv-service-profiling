@@ -84,6 +84,7 @@ namespace TSP__PortType {
             void startDockerContainer();
             void stopDockerContainer();
             std::string start_local_program(std::string, bool background=false);
+            void start_local_program_and_wait(std::string command);
 
 
         protected:

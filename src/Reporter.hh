@@ -32,6 +32,9 @@ private:
     void save_metric(const TSP__Types::Save__Metric& send_par);
     void save_monitor_metrics(const TSP__Types::Save__Metric& send_par);
 
+    template <typename tsp_types_list>
+    void monitor_list_to_csv(tsp_types_list list, std::string metric_name, std::string vnf_name, int run, int interval);
+
 protected:
 	void user_map(const char *system_port);
 	void user_unmap(const char *system_port);

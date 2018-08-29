@@ -30,9 +30,7 @@ ManoMsg::ManoMsg(const char *par_port_name)
 	: ManoMsg_BASE(par_port_name)
 {
     debug = true;
-    debug_http = true;
 
-    //vnf_path = "/home/dark/son-examples/service-projects/sonata-empty-service-emu/sources/vnf/";
     nsd_path = "/home/dark/teaspoon/external/son-examples/service-projects/";
 
     docker_rest_url = "http://127.0.0.1:2376";
@@ -40,11 +38,6 @@ ManoMsg::ManoMsg(const char *par_port_name)
     vimemu_rest_url = "http://172.17.0.2:5001";
     rest_username = "admin";
     rest_password = "admin";
-
-    manage_docker = true;
-
-    //sfc_service_instance_uuid = "";
-    //sfc_service_uuid = "";
 }
 
 ManoMsg::~ManoMsg()
@@ -52,10 +45,36 @@ ManoMsg::~ManoMsg()
 
 }
 
-void ManoMsg::set_parameter(const char * /*parameter_name*/,
-        const char * /*parameter_value*/)
+/**
+ * Handle setting parameters from config file
+ * @param parameter_name The name of the parameter
+ * @param parameter_value The value of the parameter
+ */
+void ManoMsg::set_parameter(const char * parameter_name,
+        const char * parameter_value)
 {
+    std::string name(parameter_name);
+    std::string value(parameter_value);
 
+    if(name == "nsd_path") {
+        nsd_path = value;
+    } else if(name == "docker_rest_url") {
+        docker_rest_url = value;
+    } else if(name == "gatekeeper_rest_url") {
+        gatekeeper_rest_url = value;
+    } else if(name == "vimemu_rest_url") {
+        vimemu_rest_url = value;
+    } else if(name == "rest_username") {
+        rest_username = value;
+    } else if(name == "rest_password") {
+        rest_password = value;
+    } else if(name == "debug") {
+        if(value == "true") {
+            debug = true;
+        } else {
+            debug = false;
+        }
+    }
 }
 
 /*void ManoMsg::Handle_Fd_Event(int fd, boolean is_readable,
@@ -84,33 +103,6 @@ void ManoMsg::Handle_Fd_Event_Readable(int /*fd*/)
 void ManoMsg::user_map(const char * /*system_port*/)
 {
     startDockerContainer();
-
-    http_client client(gatekeeper_rest_url);
-    auto query =  uri_builder("/instantiations").to_string();
-
-    int retries = 20;
-    bool rest_online = false;
-    while(!rest_online) {
-        try {
-            http_response response = client.request(methods::GET, query).get();
-
-            if(response.status_code() == status_codes::OK) {
-                rest_online = true;
-            }
-        } catch (const http_exception &e) {
-            log("Could connect to vim-emu: %s", e.what());
-        }
-
-        if(retries <= 0) {
-            TTCN_error("Could connect to vim-emu!");
-        } else if (!rest_online) {
-            log("Retrying request");
-            // wait 2 seconds if the request did not work
-            std::this_thread::sleep_for(std::chrono::seconds(5));
-        }
-
-        retries--;
-    }
 }
 
 /**
@@ -190,8 +182,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
     log("Cleanup vim-emu!");
 
     stopAllAgents();
-    //stopDockerContainer();
-    //startDockerContainer();
+    stopDockerContainer();
+    startDockerContainer();
 
     log("Cleaned up vim-emu. New vim-emu instance is running!");
 }
@@ -248,10 +240,9 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         std::string agent_port = port_elements[1];
 
         // TODO: Configureable password
-        std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd; //+ " " + server_address;
+        std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd;
 
         if(output_parser.empty()) {
-            // TODO: Use start_local_program
             start_local_program(command, true);
         } else {
             // Get the command output
@@ -520,6 +511,7 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
  * @param service_instance_uuid Service Instance UUID of the SFC
  */
 void ManoMsg::stopSfcService(std::string service_uuid, std::string service_instance_uuid) {
+    return;
     log("Stop service with uuid %s and instance uuid %s", service_uuid.c_str(), service_instance_uuid.c_str());
 
     json::value postParameters = web::json::value::object();
@@ -725,18 +717,37 @@ void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
  * Start the local vim-emu Docker container
  */
 void ManoMsg::startDockerContainer() {
-    if(!manage_docker) {
-        return;
-    }
-
     log("Starting docker container");
 
-    // TODO: test if container is running
-    std::string cmd = "docker run --name vim-emu -d --rm --privileged --pid='host' -v /var/run/docker.sock:/var/run/docker.sock vim-emu-img > /dev/null";
-    int status = std::system(cmd.c_str());
+    std::string cmd = "sh -c \"docker run --name vim-emu -d --rm --privileged --pid='host' -v /var/run/docker.sock:/var/run/docker.sock vim-emu-img\"";
+    start_local_program_and_wait(cmd);
 
-    if(status < 0) {
-        TTCN_error("Could not start docker container!");
+    // Test connection to vim-emu (and wait until it is available)
+    http_client client(gatekeeper_rest_url);
+    auto query =  uri_builder("/instantiations").to_string();
+
+    int retries = 20;
+    bool rest_online = false;
+    while(!rest_online) {
+        try {
+            http_response response = client.request(methods::GET, query).get();
+
+            if(response.status_code() == status_codes::OK) {
+                rest_online = true;
+            }
+        } catch (const http_exception &e) {
+            log("Could connect to vim-emu: %s", e.what());
+        }
+
+        if(retries <= 0) {
+            TTCN_error("Could connect to vim-emu!");
+        } else if (!rest_online) {
+            log("Retrying request");
+            // wait 2 seconds if the request did not work
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+        }
+
+        retries--;
     }
 
     log("Started docker container");
@@ -746,27 +757,41 @@ void ManoMsg::startDockerContainer() {
  * Stops all local Docker containers
  */
 void ManoMsg::stopDockerContainer() {
-    if(!manage_docker) {
-        return;
-    }
-
     log("Stopping docker container");
-    std::string cmd = "docker stop $(docker ps -q) > /dev/null";
-    int status = std::system(cmd.c_str());
+    std::string cmd = "sh -c \"docker stop $(docker ps -q)\"";
 
-    if(status < 0) {
-        TTCN_error("Could not stop docker container!");
-    }
+    start_local_program_and_wait(cmd);
 
     log("Stopped docker container");
 }
 
 /**
+ * Start a program and waits until is has exited
+ * @param command The command that should be executed
+ */
+void ManoMsg::start_local_program_and_wait(std::string command) {
+    log("Starting command \"%s\"", command.c_str());
+
+    std::error_code ec;
+    boost::process::system(command,
+            boost::process::std_in.close(),
+            boost::process::std_out > boost::process::null,
+            boost::process::std_err > boost::process::null,
+            ec);
+
+    if(ec.value() != boost::system::errc::success) {
+        TTCN_error("Could not start command, exit code: %d", ec.value());
+    }
+}
+
+/**
  * Start a program on the local machine
  * @param command Command that should be started
+ * @param background true, if the program should be started in background, else false
  * @return The stdout of the program
  */
 std::string ManoMsg::start_local_program(std::string command, bool background) {
+    log("Starting command \"%s\"", command.c_str());
     boost::asio::io_service ios;
 
     std::future<std::string> data;
@@ -885,8 +910,6 @@ std::future<std::map<std::string, std::map<std::string, std::vector<std::string>
 
         metric_values["interval"].push_back(std::to_string(interval));
 
-        //metric_values["cpu_stats"].push_back(docker_rest_url);
-        // Wait for specified interval
         std::map<std::string, std::map<std::string, std::vector<std::string>>> output;
         output[vnf_name] = metric_values;
 

@@ -25,10 +25,21 @@ Reporter::~Reporter()
 
 }
 
-void Reporter::set_parameter(const char * /*parameter_name*/,
-        const char * /*parameter_value*/)
+void Reporter::set_parameter(const char * parameter_name,
+        const char * parameter_value)
 {
+    std::string name(parameter_name);
+    std::string value(parameter_value);
 
+    if(name == "output_dir") {
+        output_dir = value;
+    } else if(name == "debug") {
+        if(value == "true") {
+            debug = true;
+        } else {
+            debug = false;
+        }
+    }
 }
 
 /*void Reporter::Handle_Fd_Event(int fd, boolean is_readable,
@@ -109,7 +120,7 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
     TSP__Types::ParameterValues additional_parameters;
 
     // Create header
-    if(!header) {
+    if(boost::filesystem::file_size(csvfile_path) == 0) {
         for(int i = 0; i < parameters.size_of(); i++) {
             std::string name((const char*)parameters[i].function__id());
             csvfile << "run" << "," << "vcpus:"+name << "," << "memory:" + name << "," << "storage:" + name;
@@ -158,25 +169,35 @@ void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par) {
 
     for(int i = 0; i < monitor_metrics.size_of(); i++) {
         std::string vnf_name(monitor_metrics[i].vnf__name());
+        int interval = (const int)monitor_metrics[i].interval();
 
-        // CPU utilization
-        std::ofstream csvfile;
-        std::string filename = vnf_name + ":cpu_utilization";
-
-        boost::filesystem::path cpu_util_csv = full_path / filename;
-        csvfile.open(cpu_util_csv.string(), std::ios_base::app);
-
-        if(csvfile.fail()) {
-            TTCN_error("Could not open csv file for cpu utilization");
-        }
-
-        for(int j = 0; j < monitor_metrics[i].cpu__utilization__list().size_of(); j++) {
-            csvfile << run << "," << monitor_metrics[i].cpu__utilization__list()[j] << std::endl;
-        }
-
-        csvfile.close();
+        monitor_list_to_csv(monitor_metrics[i].cpu__utilization__list(), "cpu-utilization", vnf_name, run, interval);
+        monitor_list_to_csv(monitor_metrics[i].memory__current__list(), "memory-current", vnf_name, run, interval);
+        monitor_list_to_csv(monitor_metrics[i].memory__maximum__list(), "memory-maximum", vnf_name, run, interval);
     }
 
+}
+
+template <typename tsp_types_list>
+void Reporter::monitor_list_to_csv(tsp_types_list list, std::string metric_name, std::string vnf_name, int run, int intervall) {
+    std::ofstream csvfile;
+    std::string filename = vnf_name + ":" + metric_name;
+    boost::filesystem::path csv_path = full_path / filename;
+
+    csvfile.open(csv_path.string(), std::ios_base::app);
+    if(csvfile.fail()) {
+        TTCN_error("Could not open csv file");
+    }
+
+    if(boost::filesystem::file_size(csv_path) == 0) {
+        csvfile << "run" << "," << "monitor_metric" << "," << "time" << std::endl;
+    }
+
+    for(int j = 0; j < list.size_of(); j++) {
+        csvfile << run << "," << list[j] << "," << j*intervall << std::endl;
+    }
+
+    csvfile.close();
 }
 
 // TODO: Place logging function to a helper class
