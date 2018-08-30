@@ -9,6 +9,7 @@ module TSP_PortType {
     out Start_CMD;
     in Start_CMD_Reply;
     out Cleanup_Request;
+    in Operation_Status;
   };
 
   type port Reporter message {
@@ -18,6 +19,7 @@ module TSP_PortType {
   type component MANO {
     port ManoMsg Mano;
     port Reporter Report;
+    timer serviceprofiling_timer;
   };
 
 }

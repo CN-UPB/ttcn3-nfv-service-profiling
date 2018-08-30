@@ -17,14 +17,17 @@ module TSPF_snort_iperf3 {
                 }},
                 { "memswap_limit", { list :=
                     { 3000, 4000, 5000, 6000 }
+                }},
+                { "datacenter", { charlist := {
+                    "dc1", "dc2" }
                 }}
             }
         }
     };
 
     template Agents agent_list := {
-        iperf3server("snort_vnf:output"),
-        iperf3client("snort_vnf:input")
+        iperf3server("snort_vnf:output", "dc1"),
+        iperf3client("snort_vnf:input", "dc1")
     };
 
     template Monitors monitor_list := {

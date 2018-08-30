@@ -67,6 +67,7 @@ module TSP_Types {
       charstring name,
       charstring connection_point,
       charstring image,
+      charstring datacenter,
       charstring cmd optional,
       charstring output_parser optional
   };
@@ -125,6 +126,11 @@ module TSP_Types {
   type record of integer integerList;
 
   type record Cleanup_Request { };
+
+  type record Operation_Status {
+      boolean success,
+      charstring reason optional
+  }
 
   type record Save_Metric {
       charstring experiment_name,

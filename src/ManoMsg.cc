@@ -11,6 +11,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/process.hpp>
 #include <boost/asio.hpp>
+#include <boost/format.hpp>
 #include <chrono>
 #include <thread>
 #include <regex>
@@ -27,7 +28,7 @@ using namespace concurrency::streams;
 namespace TSP__PortType {
 
 ManoMsg::ManoMsg(const char *par_port_name)
-	: ManoMsg_BASE(par_port_name)
+    : ManoMsg_BASE(par_port_name)
 {
     debug = true;
 
@@ -146,13 +147,21 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
     log("Create SFC from %s", filepath.c_str());
 
     sfc_service_uuid = uploadPackage(filepath);
+    if(sfc_service_uuid == "") {
+        return;
+    }
+
     sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
+    if(sfc_service_instance_uuid == "") {
+        return;
+    }
 
     // We have to wait a moment so that the SFC is available
     std::this_thread::sleep_for(std::chrono::seconds(2));
     apply_additional_parameters_for_sfc();
 
     log("SFC created and running");
+    send_successful_operation_status();
 }
 
 /**
@@ -172,6 +181,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
         startAgent(vnf_name, vnf_image);
         connectAgentToSfc(vnf_name, vnf_cp);
     }
+    send_successful_operation_status();
 }
 
 /**
@@ -186,6 +196,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
     startDockerContainer();
 
     log("Cleaned up vim-emu. New vim-emu instance is running!");
+    send_successful_operation_status();
 }
 
 /**
@@ -260,13 +271,13 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             TSP__Types::Monitor__Metrics monitor_metrics;
 
             for(auto & future : monitor_futures) {
-            try {
+                try {
                     std::map<std::string, std::map<std::string, std::vector<std::string>>> metrics_vnfs = future.get();
-					for(auto metric_vnf : metrics_vnfs ) {
+                    for(auto metric_vnf : metrics_vnfs ) {
                         TSP__Types::Monitor__Metric monitor_metric;
                         monitor_metric.vnf__name() = CHARSTRING(metric_vnf.first.c_str());
 
-						log("Key %s", metric_vnf.first.c_str());
+                        log("Key %s", metric_vnf.first.c_str());
                         for(auto & metric_specifier : metric_vnf.second) {
                             if(metric_specifier.first == "interval") {
                                 for(auto & interval : metric_specifier.second) {
@@ -299,16 +310,16 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                                 }
                             } else if(metric_specifier.first == "memory-current") {
                                 for(auto & metric : metric_specifier.second) {
-                                CHARSTRING metric_value(metric.c_str());
-                                int index_next_element;
-                                if(monitor_metric.memory__current__list().is_bound()) {
-                                    index_next_element = monitor_metric.memory__current__list().size_of();
+                                    CHARSTRING metric_value(metric.c_str());
+                                    int index_next_element;
+                                    if(monitor_metric.memory__current__list().is_bound()) {
+                                        index_next_element = monitor_metric.memory__current__list().size_of();
+                                        monitor_metric.memory__current__list()[index_next_element] = metric_value;
+                                    } else {
+                                        index_next_element = 0;
+                                    }
                                     monitor_metric.memory__current__list()[index_next_element] = metric_value;
-                                } else {
-                                    index_next_element = 0;
                                 }
-                                monitor_metric.memory__current__list()[index_next_element] = metric_value;
-                            }
                             }
                         }
 
@@ -321,9 +332,9 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
                         monitor_metrics[index_mm_next_element] = monitor_metric;
                     }
-            } catch(const std::exception& e) {
-                log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
-            }
+                } catch(const std::exception& e) {
+                    log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
+                }
             }
             monitor_futures.clear();
 
@@ -352,10 +363,11 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     for(int i = 0; i < parameters.lengthof(); i++) {
         std::string vnf_name = (const char*)parameters[i].function__id();
 
-        // All main values that vim-emu supports
+        // All main values that vim-emu supports via the SONATA package format
         int vcpus = (const int)parameters[i].vcpus();
         int memory = (const int)parameters[i].memory();
         int storage = (const int)parameters[i].storage();
+        std::string datacenter;
 
         // Additional parameter configuration values
         // We cannot handle this here, so we save them for later use, when we instantiate the SFC
@@ -364,7 +376,15 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
             for(int j = 0; j < additional_parameters.size_of() ; j++) {
                 std::string additional_parameter_name((const char*)additional_parameters[j].name());
                 std::string additional_parameter_value((const char*)additional_parameters[j].input());
-                vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
+
+                if(additional_parameter_name == "datacenter") {
+                    datacenter = additional_parameter_value;
+                } else if(additional_parameter_name == "cpu_time") {
+                    // The name for cpu_time for vim-emu is cpu_bw
+                    additional_parameter_name = "cpu_bw";
+                } else {
+                    vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
+                }
             }
         }
 
@@ -377,7 +397,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
-        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
+        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage) + " " + datacenter;
         log("Command: %s", cmd.c_str());
 
         start_local_program(cmd);
@@ -391,6 +411,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     log("Command output: %s", son_cmd_output.c_str());
 
     log("Setting parameter configuration of SFC %s completed", service_name.c_str());
+    send_successful_operation_status();
 }
 
 void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
@@ -415,6 +436,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
     }
 
     log("Added Monitors");
+    send_successful_operation_status();
 }
 
 /**
@@ -463,11 +485,15 @@ std::string ManoMsg::uploadPackage(std::string filepath) {
 
             return service_uuid;
         } else {
-            TTCN_error("Could upload package to vim-emu. Status: %d", response.status_code());
+            std::string reason("Could upload package to vim-emu. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could upload package to vim-emu: %s", e.what());
+        std::string reason("Could upload package to vim-emu: %s", e.what());
+        send_unsuccessful_operation_status(reason);
     }
+
+    return "";
 }
 
 /**
@@ -498,10 +524,14 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
 
             return service_instance_uuid;
         } else {
-            TTCN_error("Could not start SFC. Status: %d", response.status_code());
+            std::string reason("Could not start SFC. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
+            return "";
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not start SFC: %s", e.what());
+        std::string reason("Could not start SFC: %s", e.what());
+        send_unsuccessful_operation_status(reason);
+        return "";
     }
 }
 
@@ -532,10 +562,12 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
             log("Stopped service");
             return;
         } else {
-            TTCN_error("Could not stop SFC. Status: %d", response.status_code());
+            std::string reason("Could not stop SFC. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not stop SFC: %s", e.what());
+        std::string reason("Could not stop SFC: %s", e.what());
+        send_unsuccessful_operation_status(reason);
     }
 
     log("Stopped service");
@@ -568,10 +600,12 @@ void ManoMsg::apply_additional_parameters_for_sfc() {
                 if(response.status_code() == status_codes::OK) {
                     log("Setting the parameter %s of %s to %s was successful", parameter_name.c_str(), vnf_name.c_str(), value.c_str());
                 } else {
-                    TTCN_error("Could not set the parameter %s of %s to %s, status_code: %d", parameter_name.c_str(), vnf_name.c_str(), value.c_str(), response.status_code());
+                    std::string reason = str(boost::format("Could not set the parameter %s of %s to %s, status_code: %d") % parameter_name.c_str() % vnf_name.c_str() % value.c_str() % response.status_code());
+                    send_unsuccessful_operation_status(reason);
                 }
             } catch (const http_exception &e) {
-                TTCN_error("Could not set the parameter %s of %s to %s: %s", parameter_name.c_str(), vnf_name.c_str(), value.c_str(), e.what());
+                std::string reason = str(boost::format("Could not set the parameter %s of %s to %s: %s") % parameter_name.c_str() % vnf_name.c_str() % value.c_str() % e.what());
+                send_unsuccessful_operation_status(reason);
             }
 
         }
@@ -614,10 +648,12 @@ void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
 
             return;
         } else {
-            TTCN_error("Could not start Agent VNF. Status: %d", response.status_code());
+            std::string reason("Could not start Agent VNF. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not start Agent VNF: %s", e.what());
+        std::string reason("Could not start Agent VNF: %s", e.what());
+        send_unsuccessful_operation_status(reason);
     }
 }
 
@@ -656,10 +692,12 @@ void ManoMsg::stopAgent(std::string vnf_name) {
 
             return;
         } else {
-            TTCN_error("Could not stop Agent. Status: %d", response.status_code());
+            std::string reason("Could not stop Agent. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not stop Agent: %s", e.what());
+        std::string reason("Could not stop Agent: %s", e.what());
+        send_unsuccessful_operation_status(reason);
     }
 }
 
@@ -704,10 +742,12 @@ void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
 
             return;
         } else {
-            TTCN_error("Could not create Agent VNF. Status: %d", response.status_code());
+            std::string reason("Could not create Agent VNF. Status: %d", response.status_code());
+            send_unsuccessful_operation_status(reason);
         }
     } catch (const http_exception &e) {
-        TTCN_error("Could not create Agent VNF: %s", e.what());
+        std::string reason("Could not create Agent VNF: %s", e.what());
+        send_unsuccessful_operation_status(reason);
     }
 
     log("%s is connected to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
@@ -922,6 +962,21 @@ std::future<std::map<std::string, std::map<std::string, std::vector<std::string>
 
 void ManoMsg::Monitor::stop() {
     this->running = false;
+}
+
+void ManoMsg::send_unsuccessful_operation_status(std::string reason) {
+    log("Unsuccessful operation: %s", reason.c_str());
+    TSP__Types::Operation__Status operation_status;
+    operation_status.success() = BOOLEAN(false);
+    operation_status.reason() = CHARSTRING(reason.c_str());
+    incoming_message(operation_status);
+}
+
+void ManoMsg::send_successful_operation_status() {
+    TSP__Types::Operation__Status operation_status;
+    operation_status.success() = BOOLEAN(true);
+    operation_status.reason() = CHARSTRING("");
+    incoming_message(operation_status);
 }
 
 } /* end of namespace */

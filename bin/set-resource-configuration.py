@@ -4,11 +4,15 @@ import sys
 import ruamel.yaml
 import io
 
-def main(filepath, vnf, vcpus, mem, storage):
+def main(filepath, vnf, vcpus, mem, storage, datacenter=None):
 
     with open(filepath) as stream:
         try:
             yaml_dict = (ruamel.yaml.load(stream, Loader=ruamel.yaml.RoundTripLoader, preserve_quotes=True))
+            if(datacenter != None):
+                yaml_dict["dc"] = datacenter
+            else:
+                del yaml_dict["dc"]
             vdus = yaml_dict["virtual_deployment_units"]
 
             # Note: We assume one vdu
@@ -28,6 +32,12 @@ def main(filepath, vnf, vcpus, mem, storage):
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+    if(len(sys.argv) == 6):
+        sys.exit(main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]))
+    elif(len(sys.argv) == 7):
+        sys.exit(main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]))
+    else:
+        print("Wrong number of parameters")
+        sys.exit(1)
 
 

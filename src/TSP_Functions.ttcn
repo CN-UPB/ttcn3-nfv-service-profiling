@@ -31,6 +31,9 @@ module TSP_Functions {
                                 case (floatlist) { additional_param_values[j] := { name := additional_parameter.name,
                                     input := float2str(valueof(additional_parameter.parameter.floatlist[0])) };
                                 }
+                                case (charlist) { additional_param_values[j] := { name := additional_parameter.name,
+                                    input := valueof(additional_parameter.parameter.charlist[0]) };
+                                }
                             }
                         }
                     }
@@ -201,5 +204,23 @@ module TSP_Functions {
         return element_i_overflowed;
     }
 
+    altstep receive_Operation_Status() runs on MANO {
+        [] Mano.receive(Operation_Status:{ success := true, reason := "" }) {
+            // Everything OK so only stop the timer
+            serviceprofiling_timer.stop;
+        }
+        [] Mano.receive {
+            // We got junk and that should never happen
+            serviceprofiling_timer.stop;
+            setverdict(fail);
+            stop;
+           }
+        [] serviceprofiling_timer.timeout {
+            serviceprofiling_timer.stop;
+            setverdict(fail);
+            stop;
+           }
+
+    }
 }
 

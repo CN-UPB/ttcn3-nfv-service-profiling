@@ -18,8 +18,8 @@ module TSPF_snort_iperf3_test {
     };
 
     template Agents agent_list := {
-        iperf3server("snort_vnf:output"),
-        iperf3client("snort_vnf:input")
+        iperf3server("snort_vnf:output", "dc1"),
+        iperf3client("snort_vnf:input", "dc1")
     };
 
     template Monitors monitor_list := {
