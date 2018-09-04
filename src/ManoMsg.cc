@@ -258,7 +258,16 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         } else {
             // Get the command output
             auto command_stdout = start_local_program(command);
-            auto agent_metric = OutputParser::parse(command_stdout, output_parser);
+            log("Command output: %s", command_stdout.c_str());
+            std::string agent_metric;
+            try {
+                agent_metric = OutputParser::parse(command_stdout, output_parser);
+            } catch(const std::exception& e) {
+                std::string::size_type json_location = command_stdout.find("{");
+                std::string json_data = command_stdout.substr(json_location, std::string::npos); 
+                TTCN_error("Could not parse output: %s\n json: %s", e.what(), json_data.c_str());
+            }
+            log("Collected metric: %s", agent_metric.c_str());
 
             // Stop all monitors
             for(const auto & monitor : monitor_objects) {
@@ -277,7 +286,6 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                         TSP__Types::Monitor__Metric monitor_metric;
                         monitor_metric.vnf__name() = CHARSTRING(metric_vnf.first.c_str());
 
-                        log("Key %s", metric_vnf.first.c_str());
                         for(auto & metric_specifier : metric_vnf.second) {
                             if(metric_specifier.first == "interval") {
                                 for(auto & interval : metric_specifier.second) {
@@ -325,7 +333,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
                         int index_mm_next_element;
                         if(monitor_metrics.is_bound()) {
-                            index_mm_next_element = monitor_metrics.size_of() + 1;
+                            index_mm_next_element = monitor_metrics.size_of();
                         } else {
                             index_mm_next_element = 0;
                         }

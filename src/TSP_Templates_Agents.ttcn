@@ -20,14 +20,22 @@ module TSP_Templates_Agents {
 
     template Agent iperf3client_udp(charstring cp, charstring dc) modifies iperf3client := {
         cmd := "iperf3 -b 100000M -u -t 5 -J -c ${VNF:IP4:server}"
-    }
+    };
 
-    template Agent wrk_client(charstring cp) := {
+    template Agent wrk_client(charstring cp, charstring dc) := {
         name := "client",
         connection_point := cp,
         image := "tsp-wrk-ssh",
-        datacenter := "dc1",
-        cmd := "wrk http://192.168.0.0:80",
+        datacenter := dc,
+        cmd := "wrk ${VNF:IP4:httpserver}",
         output_parser := "wrk-requests"
+    };
+    
+    template Agent nginx_server(charstring cp, charstring dc) := {
+        name := "httpserver",
+        connection_point := cp,
+        image := "tsp-nginx-ssh",
+        datacenter := dc,
+        cmd := "service nginx restart"
     };
 }
