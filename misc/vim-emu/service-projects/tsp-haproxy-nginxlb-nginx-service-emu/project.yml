@@ -1,7 +1,7 @@
 package:
-  description: "Haproxy, snort and nginx SFC"
+  description: "Haproxy, nginxlb and nginx SFC"
   maintainer: "Christian Dröge, mail@cdroege.de"
-  name: tsp-haproxy-snort-nginx-service
+  name: tsp-haproxy-nginxlb-nginx-service
   vendor: de.cdroege
   version: '0.1'
 descriptor_extension: "yml"

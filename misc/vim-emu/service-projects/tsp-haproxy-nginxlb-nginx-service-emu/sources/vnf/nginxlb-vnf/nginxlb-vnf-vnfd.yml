@@ -4,16 +4,16 @@
 ##
 descriptor_version: "vnfd-schema-01"
 vendor: "de.cdroege"
-name: "snort-vnf"
+name: "nginxlb-vnf"
 version: "0.1"
 author: "Christian Dröge, mail@cdroege.de"
-description: "A snort VNF"
+description: "A nginx lb VNF"
 ##
 ## The virtual deployment unit.
 ##
 virtual_deployment_units:
 - id: "vdu01"
-  vm_image: "tsp-snort-ids-vnf"
+  vm_image: "tsp-nginx-lb-vnf"
   vm_image_format: "docker"
   resource_requirements:
     cpu:

@@ -77,14 +77,14 @@ ARCHIVE_DIR = backup
 #
 
 # TTCN-3 modules of this project:
-TTCN3_MODULES = ../src/TSP_Functions.ttcn ../src/TSP_PortType.ttcn ../src/TSP_Templates_Agents.ttcn ../src/TSP_Testcases.ttcn ../src/TSP_Types.ttcn ../src/TSPF/TSPF_snort_iperf3.ttcn ../src/TSPF/TSPF_snort_iperf3_test.ttcn ../src/TSPF/TSPF_empty_iperf3.ttcn ../src/TSPF/TSPF_haproxy_nginx_wrk.ttcn ../src/TSPF/TSPF_haproxy_snort_nginx_wrk.ttcn
+TTCN3_MODULES = ../src/TSP_Functions.ttcn ../src/TSP_PortType.ttcn ../src/TSP_Templates_Agents.ttcn ../src/TSP_Testcases.ttcn ../src/TSP_Types.ttcn ../src/TSPF/TSPF_snort_iperf3.ttcn ../src/TSPF/TSPF_snort_iperf3_test.ttcn ../src/TSPF/TSPF_empty_iperf3.ttcn ../src/TSPF/TSPF_haproxy_nginx_wrk.ttcn ../src/TSPF/TSPF_haproxy_nginxlb_nginx_wrk.ttcn
 
 # ASN.1 modules of this project:
 ASN1_MODULES =
 
 # C++ source & header files generated from the TTCN-3 & ASN.1 modules of
 # this project:
-GENERATED_SOURCES = TSP_Functions.cc TSP_PortType.cc TSP_Testcases.cc TSP_Types.cc TSP_Templates_Agents.cc TSPF_snort_iperf3.cc TSPF_snort_iperf3_test.cc TSPF_empty_iperf3.cc TSPF_haproxy_nginx_wrk.cc TSPF_haproxy_snort_nginx_wrk.cc $(ASN1_MODULES:.asn=.cc)
+GENERATED_SOURCES = TSP_Functions.cc TSP_PortType.cc TSP_Testcases.cc TSP_Types.cc TSP_Templates_Agents.cc TSPF_snort_iperf3.cc TSPF_snort_iperf3_test.cc TSPF_empty_iperf3.cc TSPF_haproxy_nginx_wrk.cc TSPF_haproxy_nginxlb_nginx_wrk.cc $(ASN1_MODULES:.asn=.cc)
 GENERATED_HEADERS = $(GENERATED_SOURCES:.cc=.hh)
 
 # C/C++ Source & header files of Test Ports, external functions and

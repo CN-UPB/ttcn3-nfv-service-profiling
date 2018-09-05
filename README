@@ -1,7 +1,7 @@
 # Install
 
 * Prerequisite: Ubuntu 16.04
-* `sudo apt install libcpprest-dev`
+* `sudo apt install libcpprest-dev libxml2-dev expect`
 * Install newer boost version (>= 1.67)
 * Install Titan binaries and add them to $PATH variable
 * son-cli

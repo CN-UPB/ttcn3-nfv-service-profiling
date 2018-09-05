@@ -6,10 +6,8 @@ ENV IFIN input
 ENV IFOUT output
 
 # define
-ENV TCP_LISTEN_PORT 5202
-ENV TCP_SERVERS server 11.0.0.2:5202;
-ENV UDP_LISTEN_PORT 5212
-ENV UDP_SERVERS server 11.0.0.2:5212;
+ENV TCP_LISTEN_PORT 80
+ENV TCP_SERVERS server 10.30.3.1:80;
 
 RUN apt-get update && apt-get install -y -q \
 	net-tools \
@@ -19,12 +17,9 @@ RUN apt-get update && apt-get install -y -q \
 
 ADD start.sh start.sh
 RUN chmod +x start.sh
-ADD ipconfig.sh ipconfig.sh
-RUN chmod +x ipconfig.sh
 ADD nginx.conf /etc/nginx/nginx.conf
 
 ENV SON_EMU_CMD "./start.sh"
-ENV SON_EMU_CMD_STOP "./stop.sh"
 
 WORKDIR /
 

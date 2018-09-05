@@ -1,4 +1,4 @@
-module TSPF_haproxy_snort_nginx_wrk {
+module TSPF_haproxy_nginxlb_nginx_wrk {
     import from TSP_Types all;
     import from TSP_Testcases all;
 
@@ -28,9 +28,9 @@ module TSPF_haproxy_snort_nginx_wrk {
                 }}
             }
         },{
-            function_id := "snort-vnf",
+            function_id := "nginxlb-vnf",
             vcpus := { 1,2 },
-            memory := { 2048, 4096 },
+            memory := { 128, 256 },
             storage := { 10 },
             additional_parameters := {
                 { "cpu_bw", { macro := {
@@ -75,7 +75,7 @@ module TSPF_haproxy_snort_nginx_wrk {
                 "memory-current"
             }
         },{
-            vnf_name := "snort-vnf",
+            vnf_name := "nginxlb-vnf",
             interval := 1,
             metrics := {
                 "cpu-utilization",
@@ -87,10 +87,10 @@ module TSPF_haproxy_snort_nginx_wrk {
     };
 
     template TSP_Experiment spexperiment := {
-        name := "haproxy-snort-nginx-wrk",
+        name := "haproxy-nginxlb-nginx-wrk",
         repetitions := 10,
         profiling_timeout := 300.0,
-        service_name := "tsp-haproxy-snort-nginx-service.son",
+        service_name := "tsp-haproxy-nginxlb-nginx-service.son",
         paramcfgs := paramcfg,
         agents := agent_list,
         monitors := monitor_list
