@@ -60,7 +60,7 @@ module TSP_Testcases {
                                 [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
                                     // We received a metric
                                     // TODO: monitor_metrics might be empty/unbound
-                                    template Save_Metric save_metric_request := { spe.name, cmd_reply.metric, cmd_reply.monitor_metrics, paramcfgs, run };
+                                    template Save_Metric save_metric_request := { spe.name, cmd_reply.metrics, cmd_reply.monitor_metrics, paramcfgs, run };
                                     Report.send(save_metric_request);
                                     //serviceprofiling_timer.start(30.0);
                                     //receive_Operation_Status();
@@ -83,32 +83,33 @@ module TSP_Testcases {
                             receive_Operation_Status();
 
                             run := run + 1;
+                        }
 
-                            // Increment last parameter
-                            var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters) - 1;
-                            f_increment_parameter_config(paramcfgs, spe, current_param, last_param_index);
+                        // Increment last parameter
+                        var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters) - 1;
+                        f_increment_parameter_config(paramcfgs, spe, current_param, last_param_index);
 
-                            // Check for overflows starting from the last parameter
-                            // This works like an odometer
-                            for(var integer i := last_param_index; i > 0; i := i - 1) {
-                                // If there is an overflow, set it to the initial value and increment
-                                // he previous value
-                                if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i)) {
-                                    f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i);
-                                    f_increment_parameter_config(paramcfgs, spe, current_param, i-1);
-                                    
-                                    
-                                } else {
-                                    break;
-                                }
-                            }
-                            
-                            if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, 0)) {
-                                // We tested the last element, so stop the additional parameter loop
-                                f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, 0);
-                                last_element_not_reached := false
+                        // Check for overflows starting from the last parameter
+                        // This works like an odometer
+                        for(var integer i := last_param_index; i > 0; i := i - 1) {
+                            // If there is an overflow, set it to the initial value and increment
+                            // he previous value
+                            if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i)) {
+                                f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i);
+                                f_increment_parameter_config(paramcfgs, spe, current_param, i-1);
+                                
+                                
+                            } else {
+                                break;
                             }
                         }
+                        
+                        if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, 0)) {
+                            // We tested the last element, so stop the additional parameter loop
+                            f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, 0);
+                            last_element_not_reached := false
+                        }
+                        
                     }
                 }
             }

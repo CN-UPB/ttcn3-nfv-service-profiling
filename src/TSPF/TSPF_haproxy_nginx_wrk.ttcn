@@ -1,0 +1,80 @@
+module TSPF_haproxy_nginx_wrk {
+    import from TSP_Types all;
+    import from TSP_Testcases all;
+
+    template ParameterConfigurationMacros paramcfg := {
+        {
+            function_id := "haproxy-vnf",
+            vcpus := { 1,2,3,4 },
+            memory := { 256, 512, 1024, 2048 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_bw", { macro := {
+                    min := 0.1,
+                    max := 1.0,
+                    step := 0.3 }
+                }}
+            }
+        },{
+            function_id := "nginx-vnf",
+            vcpus := { 1,2,3,4 },
+            memory := { 256, 512, 1024, 2048 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_bw", { macro := {
+                    min := 0.1,
+                    max := 1.0,
+                    step := 0.3 }
+                }}
+            }
+        }
+
+    };
+
+    template Agent wrk_client(charstring cp, charstring dc) := {
+        name := "client",
+        connection_point := cp,
+        image := "tsp-wrk-ssh",
+        datacenter := dc,
+        cmd := "wrk -s /json.lua http://10.0.0.3",
+        output_parsers := { "wrk-json-requests", "wrk-json-bytes", "wrk-json-latency-99percentile" }
+    };
+
+    template Agents agent_list := {
+        wrk_client("haproxy-vnf:input", "dc1")
+    };
+
+    template Monitors monitor_list := {
+        {
+            vnf_name := "haproxy-vnf",
+            interval := 1,
+            metrics := {
+                "cpu-utilization",
+                "memory-maximum",
+                "memory-current"
+            }
+        },{
+            vnf_name := "nginx-vnf",
+            interval := 1,
+            metrics := {
+                "cpu-utilization",
+                "memory-maximum",
+                "memory-current"
+            }
+        }
+    };
+
+    template TSP_Experiment spexperiment := {
+        name := "haproxy-nginx-wrk",
+        repetitions := 10,
+        profiling_timeout := 300.0,
+        service_name := "tsp-haproxy-nginx-service.son",
+        paramcfgs := paramcfg,
+        agents := agent_list,
+        monitors := monitor_list
+    };
+
+    control {
+        execute(SimpleTSP(spexperiment));
+    };
+}

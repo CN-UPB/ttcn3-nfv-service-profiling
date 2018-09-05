@@ -1,0 +1,8 @@
+package:
+  description: "Haproxy, snort and nginx SFC"
+  maintainer: "Christian Dröge, mail@cdroege.de"
+  name: tsp-haproxy-snort-nginx-service
+  vendor: de.cdroege
+  version: '0.1'
+descriptor_extension: "yml"
+version: '0.5'

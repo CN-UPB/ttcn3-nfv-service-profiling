@@ -69,7 +69,7 @@ module TSP_Types {
       charstring image,
       charstring datacenter,
       charstring cmd optional,
-      charstring output_parser optional
+      charlist output_parsers optional
   };
 
   type record of Agent Agents;
@@ -77,7 +77,7 @@ module TSP_Types {
   type record Monitor {
       charstring vnf_name,
       integer interval,
-      Metrics metrics
+      charlist metrics
   };
 
   type record of Monitor Monitors;
@@ -102,20 +102,20 @@ module TSP_Types {
       Agents agents
   };
   type record Start_CMD_Reply {
-      charstring metric,
+      Metrics metrics,
       Monitor_Metrics monitor_metrics
   };
 
   type record Monitor_Metric {
 	charstring vnf_name,
 	integer interval,
-	Metrics cpu_utilization_list,
-	Metrics memory_maximum_list,
-	Metrics memory_current_list
-  }
+	charlist cpu_utilization_list,
+	charlist memory_maximum_list,
+	charlist memory_current_list
+  };
   type record of Monitor_Metric Monitor_Metrics;
 
-  type record of charstring Metrics;
+  type record of charstring charlist;
 
   type record Parameter_Macro {
       float min,
@@ -130,13 +130,20 @@ module TSP_Types {
   type record Operation_Status {
       boolean success,
       charstring reason optional
-  }
+  };
 
   type record Save_Metric {
       charstring experiment_name,
-      charstring metric,
+      Metrics metrics,
       Monitor_Metrics monitor_metrics,
       ParameterConfigurations paramcfgs,
       integer run
   };
+
+  type record Metric {
+      charstring output_parser,
+      charstring measured_value
+  };
+
+  type record of Metric Metrics;
 }

@@ -9,7 +9,7 @@ namespace OutputParser {
     std::string parse(std::string input, std::string parser) {
         if(parser == "iperf3-json-bits_per_second") {
             return parse_iperf3(input, parser);
-        } else if(parser == "wrk-json-requests") {
+        } else if(parser.find("wrk-json") == 0) {
             return parse_wrk(input, parser);
         } else if(parser == "null") {
             return input;
@@ -42,12 +42,12 @@ namespace OutputParser {
                 throw std::invalid_argument( "Input does not contain a valid JSON ouput" );
             }
 
-        } else if(parser == "wrk-json-99percentile") {
+        } else if(parser == "wrk-json-latency-99percentile") {
             if(j.at("latency_distribution").is_array()) {
                 metric = j.at("latency_distribution")[3].at("latency_in_microseconds");
             }
         } else {
-            throw std::invalid_argument( "received unknown parser argument" );
+            TTCN_error("received unknown parser argument");
         }
 
         return metric.serialize();
@@ -62,12 +62,12 @@ namespace OutputParser {
             if(j.has_field("end") && j.at("end").has_field("sum_received") && j.at("end").at("sum_received").has_field("bits_per_second")) {
                 metric = j.at("end").at("sum_received").at("bits_per_second");
             } else {
-                throw std::invalid_argument( "Input does not contain a valid Iperf3 JSON ouput" );
+                throw std::invalid_argument("Input does not contain a valid Iperf3 JSON ouput");
             }
 
             return metric.serialize();
         } else {
-            throw std::invalid_argument( "received unknown parser argument" );
+            TTCN_error("received unknown parser argument");
         }
     }
 

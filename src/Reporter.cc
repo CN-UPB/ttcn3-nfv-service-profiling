@@ -117,47 +117,60 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
     int run = (const int)send_par.run();
 
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfgs());
+    auto metrics = ((const TSP__Types::Metrics)send_par.metrics());
     TSP__Types::ParameterValues additional_parameters;
+
 
     // Create header
     if(boost::filesystem::file_size(csvfile_path) == 0) {
+        csvfile << "run";
         for(int i = 0; i < parameters.size_of(); i++) {
             std::string name((const char*)parameters[i].function__id());
-            csvfile << "run" << "," << "vcpus:"+name << "," << "memory:" + name << "," << "storage:" + name;
+            csvfile << "," << "vcpus:"+name << "," << "memory:" + name << "," << "storage:" + name;
             if(parameters[i].additional__parameters().ispresent()) {
                 additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
                 for(int j = 0; j < additional_parameters.size_of() ; j++) {
                     csvfile << "," << std::string(additional_parameters[j].name()) + ":" + name;
                 }
             }
-            csvfile << "," << "metric" << std::endl;
 
-            log("This should be in the log once!");
-            header = true;
 
         }
+
+        for(int i = 0; i < metrics.size_of(); i++) {
+            csvfile << "," << metrics[i].output__parser();
+        }
+        csvfile << std::endl;
+        log("This should be in the log once!");
+        header = true;
     }
 
-    // All main values that vim-emu supports
-    int vcpus = (const int)parameters[0].vcpus();
-    int memory = (const int)parameters[0].memory();
-    int storage = (const int)parameters[0].storage();
+    csvfile << run;
 
-    csvfile << run << "," << vcpus << "," << memory << "," << storage;
-
-    // Additional parameter configuration values
+    // Parameter config
     for(int i = 0; i < parameters.size_of(); i++) {
+        // All main values that vim-emu supports
+        int vcpus = (const int)parameters[i].vcpus();
+        int memory = (const int)parameters[i].memory();
+        int storage = (const int)parameters[i].storage();
+
+        csvfile << "," << vcpus << "," << memory << "," << storage;
+
+        // Additional parameters
         if(parameters[i].additional__parameters().ispresent()) {
             additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
             for(int j = 0; j < additional_parameters.size_of() ; j++) {
                 csvfile << "," << additional_parameters[j].input();
             }
         }
+
     }
 
-    // and at last the metric
-    std::string metric((const char*)send_par.metric());
-    csvfile << "," << metric << std::endl;
+    // and at last the metrics
+    for(int i = 0; i < metrics.size_of(); i++) {
+        csvfile << "," << metrics[i].measured__value();
+    }
+    csvfile << std::endl;
 
     csvfile.close();
 }

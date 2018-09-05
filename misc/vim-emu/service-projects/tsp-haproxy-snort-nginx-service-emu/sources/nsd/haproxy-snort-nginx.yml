@@ -1,0 +1,120 @@
+
+---
+descriptor_version: "1.0"
+
+vendor: "de.cdroege"
+name: "tsp-haproxy-snort-nginx-service"
+version: "0.1"
+author: "Christian Dröge, mail@cdroege.de"
+description: "Haproxy and nginx SFC"
+
+##
+## The various network functions this service
+## is composed of.
+##
+network_functions:
+  - vnf_id: "haproxy-vnf"
+    vnf_vendor: "de.cdroege"
+    vnf_name: "haproxy-vnf"
+    vnf_version: "0.1"
+  - vnf_id: "nginx-vnf"
+    vnf_vendor: "de.cdroege"
+    vnf_name: "nginx-vnf"
+    vnf_version: "0.1"
+  - vnf_id: "snort-vnf"
+    vnf_vendor: "de.cdroege"
+    vnf_name: "snort-vnf"
+    vnf_version: "0.1"
+
+
+
+##
+## The NS connection points to the 
+## outside world.
+##
+connection_points:
+  - id: "mgmt"
+    interface: "ipv4"
+    type: "management"
+  - id: "input"
+    interface: "ipv4"
+    type: "external"
+
+##
+## The virtual links that interconnect
+## the different connections points.
+##
+virtual_links:
+  - id: "mgmt"
+    connectivity_type: "E-LAN"
+    connection_points_reference:
+      - "haproxy-vnf:mgmt"
+      - "nginx-vnf:mgmt"
+      - "snort-vnf:mgmt"
+      - "mgmt"
+  - id: "link-input"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "input"
+      - "haproxy-vnf:input"
+  - id: "link-input-rev"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "haproxy-vnf:input"
+      - "input"
+  - id: "link-haproxy-snort"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "haproxy-vnf:output"
+      - "snort-vnf:input"
+  - id: "link-haproxy-snort-rev"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "snort-vnf:input"
+      - "haproxy-vnf:output"
+  - id: "link-snort-nginx"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "snort-vnf:output"
+      - "nginx-vnf:input"
+  - id: "link-snort-nginx-rev"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "nginx-vnf:input"
+      - "snort-vnf:output"
+
+##
+## The forwarding graphs.
+##
+forwarding_graphs:
+  - fg_id: "fg01"
+    number_of_endpoints: 2
+    number_of_virtual_links: 7
+    constituent_virtual_links: 
+      - "mgmt"
+      - "link-input"
+      - "link-input-rev"
+      - "link-haproxy-snort"
+      - "link-haproxy-snort-rev"
+      - "link-snort-nginx-rev"
+      - "link-snort-nginx-rev"
+    constituent_vnfs:
+      - "haproxy-vnf"
+      - "nginx-vnf"
+      - "snort-vnf"
+    network_forwarding_paths:
+      - fp_id: "fg01:fp01"
+        policy: "none"
+        connection_points:
+          - connection_point_ref: "input"
+            position: 1
+          - connection_point_ref: "haproxy-vnf:input"
+            position: 2
+          - connection_point_ref: "haproxy-vnf:output"
+            position: 3
+          - connection_point_ref: "snort-vnf:input"
+            position: 4
+          - connection_point_ref: "snort-vnf:output"
+            position: 5
+          - connection_point_ref: "nginx-vnf:input"
+            position: 6

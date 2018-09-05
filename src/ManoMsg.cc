@@ -218,11 +218,12 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         }
         std::string cmd(cmd_optional());
 
-        OPTIONAL<CHARSTRING> output_parser_optional = ((const OPTIONAL<CHARSTRING>)agents[i].output__parser());
-        std::string output_parser;
+        OPTIONAL<TSP__Types::charlist> output_parsers_optional = ((const OPTIONAL<TSP__Types::charlist>)agents[i].output__parsers());
+        TSP__Types::charlist output_parsers;
 
-        if(output_parser_optional.is_present()) {
-            output_parser = output_parser_optional();
+        if(output_parsers_optional.is_present()) {
+            output_parsers = output_parsers_optional();
+            TSP__Types::charlist bla = output_parsers_optional();
         }
 
         // replace macros in commands
@@ -236,8 +237,6 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             cmd = regex_replace(cmd, IP4, ip4address);
             log("Replaced IP4 in command. IP4 is: %s", ip4address.c_str());
         }
-
-        log("Starting command \"%s\" on vnf %s", cmd.c_str(), vnf_name.c_str());
 
         std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
         start_local_program(ssh_start_cmd);
@@ -253,21 +252,23 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         // TODO: Configureable password
         std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd;
 
-        if(output_parser.empty()) {
+        if(output_parsers.size_of() == 0) {
             start_local_program(command, true);
         } else {
             // Get the command output
             auto command_stdout = start_local_program(command);
             log("Command output: %s", command_stdout.c_str());
-            std::string agent_metric;
-            try {
-                agent_metric = OutputParser::parse(command_stdout, output_parser);
-            } catch(const std::exception& e) {
-                std::string::size_type json_location = command_stdout.find("{");
-                std::string json_data = command_stdout.substr(json_location, std::string::npos); 
-                TTCN_error("Could not parse output: %s\n json: %s", e.what(), json_data.c_str());
+            std::map<std::string, std::string> agent_metrics;
+
+            for(int parser_index = 0; parser_index < output_parsers.size_of(); parser_index++) {
+                std::string output_parser(output_parsers[parser_index]);
+                try {
+                    agent_metrics[output_parser] = OutputParser::parse(command_stdout, output_parser);
+                } catch(const std::exception& e) {
+                    TTCN_error("Could not parse output: %s", e.what());
+                }
+                log("Collected metric: %s", agent_metrics[output_parser].c_str());
             }
-            log("Collected metric: %s", agent_metric.c_str());
 
             // Stop all monitors
             for(const auto & monitor : monitor_objects) {
@@ -331,13 +332,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                             }
                         }
 
-                        int index_mm_next_element;
-                        if(monitor_metrics.is_bound()) {
-                            index_mm_next_element = monitor_metrics.size_of();
-                        } else {
-                            index_mm_next_element = 0;
-                        }
-
+                        int index_mm_next_element = monitor_metrics.is_bound() ? monitor_metrics.size_of() : 0;
                         monitor_metrics[index_mm_next_element] = monitor_metric;
                     }
                 } catch(const std::exception& e) {
@@ -347,7 +342,19 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             monitor_futures.clear();
 
             TSP__Types::Start__CMD__Reply cmd_reply;
-            cmd_reply.metric() = CHARSTRING(agent_metric.c_str());
+            TSP__Types::Metrics metrics;
+
+            for(auto agent_metric : agent_metrics) {
+                TSP__Types::Metric metric;
+
+                metric.output__parser() = CHARSTRING(agent_metric.first.c_str());
+                metric.measured__value() = CHARSTRING(agent_metric.second.c_str());
+
+                int index_next_element = metrics.is_bound() ? metrics.size_of() : 0;
+                metrics[index_next_element] = metric;
+            }
+
+            cmd_reply.metrics() = metrics;
             if(monitor_metrics.is_bound()) {
                 cmd_reply.monitor__metrics() = monitor_metrics;
             }
@@ -428,7 +435,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
     for(int i = 0; i < send_par.monitors().size_of(); i++) {
         std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
         int interval = ((const int)send_par.monitors()[i].interval());
-        auto metrics = (const TSP__Types::Metrics)send_par.monitors()[i].metrics();
+        auto metrics = (const TSP__Types::charlist)send_par.monitors()[i].metrics();
 
         std::vector<std::string> metrics_vec;
         for(int n = 0; n < metrics.size_of(); n++) {

@@ -1,0 +1,8 @@
+package:
+  description: "Haproxy and nginx SFC"
+  maintainer: "Christian Dröge, mail@cdroege.de"
+  name: tsp-haproxy-nginx-service
+  vendor: de.cdroege
+  version: '0.1'
+descriptor_extension: "yml"
+version: '0.5'
