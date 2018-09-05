@@ -2,7 +2,7 @@
 
 * Prerequisite: Ubuntu 16.04
 * `sudo apt install libcpprest-dev`
-* Install newer boost version (>= 1.61)
+* Install newer boost version (>= 1.67)
 * Install Titan binaries and add them to $PATH variable
 * son-cli
 * son-examples
