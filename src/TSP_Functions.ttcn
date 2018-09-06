@@ -3,53 +3,49 @@ module TSP_Functions {
     import from TSP_Types all;
     import from TSP_PortType all;
 
-    //function f_setup_sfc(charstring service_name) runs on MANO {
-    //  Port.send( service_name );
-    //}
-
     function f_create_starting_parameter_config(template TSP_Experiment spe) return template ParameterConfigurations {
         var template ParameterConfigurations rcfgs := {};
 
-            for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
-                // Main parameter configs
-                var integer vcpus := valueof(spe.paramcfgs[i].vcpus[0]);
-                var integer memory := valueof(spe.paramcfgs[i].memory[0]);
-                var integer storage := valueof(spe.paramcfgs[i].storage[0]);
+        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+            // Main parameter configs
+            var integer vcpus := valueof(spe.paramcfgs[i].vcpus[0]);
+            var integer memory := valueof(spe.paramcfgs[i].memory[0]);
+            var integer storage := valueof(spe.paramcfgs[i].storage[0]);
 
-                // Additional parameter configs
-                var template ParameterValues additional_param_values := {};
-                    if(isbound(spe.paramcfgs[i].additional_parameters)) {
-                        for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
-                            template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
-                            select union (valueof(additional_parameter.parameter)) {
-                                case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
-                                    input := float2str(valueof(additional_parameter.parameter.macro.min)) };
-                                }
-                                case (list) { additional_param_values[j] := { name := additional_parameter.name,
-                                    input := int2str(valueof(additional_parameter.parameter.list[0])) };
-                                }
-                                case (floatlist) { additional_param_values[j] := { name := additional_parameter.name,
-                                    input := float2str(valueof(additional_parameter.parameter.floatlist[0])) };
-                                }
-                                case (charlist) { additional_param_values[j] := { name := additional_parameter.name,
-                                    input := valueof(additional_parameter.parameter.charlist[0]) };
-                                }
-                            }
+            // Additional parameter configs
+            var template ParameterValues additional_param_values := {};
+            if(isbound(spe.paramcfgs[i].additional_parameters)) {
+                for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+                    template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
+                    select union (valueof(additional_parameter.parameter)) {
+                        case (macro) { additional_param_values[j] := { name := additional_parameter.name, 
+                            input := float2str(valueof(additional_parameter.parameter.macro.min)) };
+                        }
+                        case (list) { additional_param_values[j] := { name := additional_parameter.name,
+                            input := int2str(valueof(additional_parameter.parameter.list[0])) };
+                        }
+                        case (floatlist) { additional_param_values[j] := { name := additional_parameter.name,
+                            input := float2str(valueof(additional_parameter.parameter.floatlist[0])) };
+                        }
+                        case (charlist) { additional_param_values[j] := { name := additional_parameter.name,
+                            input := valueof(additional_parameter.parameter.charlist[0]) };
                         }
                     }
-
-                    var integer next_item := sizeof(rcfgs);
-                    rcfgs[next_item] := { function_id := valueof(spe.paramcfgs[i].function_id),
-                        vcpus := vcpus,
-                        memory := memory,
-                        storage := storage,
-                        additional_parameters := additional_param_values
-                    };
+                }
             }
 
-            log("Created the following starting template: ", rcfgs);
+            var integer next_item := sizeof(rcfgs);
+            rcfgs[next_item] := { function_id := valueof(spe.paramcfgs[i].function_id),
+                vcpus := vcpus,
+                memory := memory,
+                storage := storage,
+                additional_parameters := additional_param_values
+            };
+        }
 
-            return rcfgs;
+        log("Created the following starting template: ", rcfgs);
+
+        return rcfgs;
     }
 
     function f_increment_parameter_config(inout template ParameterConfigurations paramcfgs, template TSP_Experiment spe, integer index_current_param, integer index_add_param) {
