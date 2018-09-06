@@ -6,7 +6,7 @@ module TSPF_haproxy_nginx_wrk {
         {
             function_id := "haproxy-vnf",
             vcpus := { 1,2,3,4 },
-            memory := { 256, 512, 1024, 2048 },
+            memory := { 128, 256, 512 },
             storage := { 10 },
             additional_parameters := {
                 { "cpu_time", { macro := {
@@ -18,7 +18,7 @@ module TSPF_haproxy_nginx_wrk {
         },{
             function_id := "nginx-vnf",
             vcpus := { 1,2,3,4 },
-            memory := { 256, 512, 1024, 2048 },
+            memory := { 128, 256, 512 },
             storage := { 10 },
             additional_parameters := {
                 { "cpu_time", { macro := {
