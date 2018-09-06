@@ -33,6 +33,7 @@ module TSP_Testcases {
 
                         // Repetitions
                         for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
+                            log("Current SPP configuration: ", paramcfgs);
                             template Setup_SFC setup_sfc_req := { spe.service_name }
                             Mano.send(setup_sfc_req);
                             serviceprofiling_timer.start(30.0);
@@ -64,7 +65,7 @@ module TSP_Testcases {
                                     Report.send(save_metric_request);
                                     //serviceprofiling_timer.start(30.0);
                                     //receive_Operation_Status();
-									setverdict ( pass );
+                                    setverdict ( pass );
                                    }
                                 [] Mano.receive {
                                     // We received junk and that should not happen
@@ -113,7 +114,6 @@ module TSP_Testcases {
                     }
                 }
             }
-        stop
         }
     }
 }

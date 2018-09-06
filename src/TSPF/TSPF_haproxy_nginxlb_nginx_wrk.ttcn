@@ -88,7 +88,7 @@ module TSPF_haproxy_nginxlb_nginx_wrk {
 
     template TSP_Experiment spexperiment := {
         name := "haproxy-nginxlb-nginx-wrk",
-        repetitions := 10,
+        repetitions := 1,
         profiling_timeout := 300.0,
         service_name := "tsp-haproxy-nginxlb-nginx-service.son",
         paramcfgs := paramcfg,
