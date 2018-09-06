@@ -11,10 +11,9 @@ module TSP_Types {
 
   type record ParameterConfiguration {
     charstring function_id,
-    integer vcpus,
-    integer memory,
-    integer storage,
-    ParameterValues additional_parameters optional 
+    charstring parameter_name,
+    ParameterCharList value_list,
+    charstring current_value // value is a reserved keyword :/
   };
   type record of ParameterConfiguration ParameterConfigurations;
 
@@ -27,13 +26,6 @@ module TSP_Types {
   };
   type record of ParameterConfigurationMacro ParameterConfigurationMacros;
 
-  type record ParameterMacro {
-      float min,
-      float max,
-      float step
-  };
-  type record of ParameterMacro ParameterMacros;
-
   type record ParameterDef {
       charstring name,
       union {
@@ -43,25 +35,16 @@ module TSP_Types {
         ParameterMacro macro
       } parameter
   };
-
   type record of ParameterDef ParameterDefs;
 
+  type record ParameterMacro {
+      float min,
+      float max,
+      float step
+  };
   type record of integer ParameterList;
   type record of float ParameterFloatList;
   type record of charstring ParameterCharList;
-
-  type union ParameterUnionList {
-      ParameterList list,
-      ParameterCharList charlist,
-      ParameterFloatList floatlist,
-      ParameterMacro macro
-  }
-
-  type record ParameterValue {
-      charstring name,
-      charstring input // value is a reserved keyword :/
-  };
-  type record of ParameterValue ParameterValues;
 
   type record Agent {
       charstring name,

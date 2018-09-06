@@ -17,7 +17,6 @@ Reporter::Reporter(const char *par_port_name)
 {
     debug = true;
     output_dir = "/home/dark/report/";
-    header = false;
 }
 
 Reporter::~Reporter()
@@ -118,52 +117,28 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
 
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfgs());
     auto metrics = ((const TSP__Types::Metrics)send_par.metrics());
-    TSP__Types::ParameterValues additional_parameters;
-
 
     // Create header
     if(boost::filesystem::file_size(csvfile_path) == 0) {
         csvfile << "run";
         for(int i = 0; i < parameters.size_of(); i++) {
-            std::string name((const char*)parameters[i].function__id());
-            csvfile << "," << "vcpus:"+name << "," << "memory:" + name << "," << "storage:" + name;
-            if(parameters[i].additional__parameters().ispresent()) {
-                additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
-                for(int j = 0; j < additional_parameters.size_of() ; j++) {
-                    csvfile << "," << std::string(additional_parameters[j].name()) + ":" + name;
-                }
-            }
-
-
+            std::string function_id((const char*)parameters[i].function__id());
+            std::string parameter_name((const char*)parameters[i].parameter__name());
+            csvfile << "," << parameter_name + ":" + function_id;
         }
 
         for(int i = 0; i < metrics.size_of(); i++) {
             csvfile << "," << metrics[i].output__parser();
         }
         csvfile << std::endl;
-        log("This should be in the log once!");
-        header = true;
     }
 
     csvfile << run;
 
     // Parameter config
     for(int i = 0; i < parameters.size_of(); i++) {
-        // All main values that vim-emu supports
-        int vcpus = (const int)parameters[i].vcpus();
-        int memory = (const int)parameters[i].memory();
-        int storage = (const int)parameters[i].storage();
-
-        csvfile << "," << vcpus << "," << memory << "," << storage;
-
-        // Additional parameters
-        if(parameters[i].additional__parameters().ispresent()) {
-            additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
-            for(int j = 0; j < additional_parameters.size_of() ; j++) {
-                csvfile << "," << additional_parameters[j].input();
-            }
-        }
-
+	std::string input((const char*)parameters[i].current__value());
+	csvfile << "," << input;
     }
 
     // and at last the metrics

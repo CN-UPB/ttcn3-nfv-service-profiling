@@ -379,28 +379,25 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         std::string vnf_name = (const char*)parameters[i].function__id();
 
         // All main values that vim-emu supports via the SONATA package format
-        int vcpus = (const int)parameters[i].vcpus();
-        int memory = (const int)parameters[i].memory();
-        int storage = (const int)parameters[i].storage();
-        std::string datacenter;
+        int vcpus;
+        int memory;
+        int storage;
 
-        // Additional parameter configuration values
-        // We cannot handle this here, so we save them for later use, when we instantiate the SFC
-        if(parameters[i].additional__parameters().ispresent()) {
-            auto additional_parameters = (const TSP__Types::ParameterValues)parameters[i].additional__parameters();
-            for(int j = 0; j < additional_parameters.size_of() ; j++) {
-                std::string additional_parameter_name((const char*)additional_parameters[j].name());
-                std::string additional_parameter_value((const char*)additional_parameters[j].input());
+        std::string additional_parameter_name((const char*)parameters[i].parameter__name());
+        std::string additional_parameter_value((const char*)parameters[i].current__value());
 
-                if(additional_parameter_name == "datacenter") {
-                    datacenter = additional_parameter_value;
-                } else if(additional_parameter_name == "cpu_time") {
-                    // The name for cpu_time for vim-emu is cpu_bw
-                    additional_parameter_name = "cpu_bw";
-                } else {
-                    vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
-                }
+        if(additional_parameter_name == "vcpus") {
+            vcpus = std::atoi(additional_parameter_value.c_str());
+        } else if(additional_parameter_name == "memory") {
+            memory = std::atoi(additional_parameter_value.c_str());
+        } else if(additional_parameter_name == "storage") {
+            storage = std::atoi(additional_parameter_value.c_str());
+        } else {
+            if(additional_parameter_name == "cpu_time") {
+                additional_parameter_name = "cpu_bw";
             }
+            // We handle additional parameters at another location
+            vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
         }
 
         // We have to replace _ with - because of file structure
@@ -412,7 +409,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
-        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage) + " " + datacenter;
+        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
         log("Command: %s", cmd.c_str());
 
         start_local_program(cmd);

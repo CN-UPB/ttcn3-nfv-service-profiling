@@ -12,107 +12,101 @@ module TSP_Testcases {
 
         var integer run := 0;
 
+        var bitstring run_status;
+        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+            run_status[i] := '0'B;
+        }
+
+        log("run_status: ", run_status);
+        run_status := run_status @> 1;
+        log("run_status: ", run_status);
+
+        var boolean all_parameters_tested := false;
+
         // Parameter Configs
-        for(var integer current_param := 0; current_param < sizeof(spe.paramcfgs); current_param := current_param + 1) {
-            // vCPUs
-            for(var integer vcpu_index := 0; vcpu_index < sizeof(spe.paramcfgs[current_param].vcpus); vcpu_index := vcpu_index + 1) {
-                paramcfgs[current_param].vcpus := spe.paramcfgs[current_param].vcpus[vcpu_index];
+        while(all_parameters_tested == false) {
+            template Set_Parameter_Config param_config_request := { spe.service_name, paramcfgs };
+            Mano.send(param_config_request);
 
-                // Memory
-                for(var integer memory_index := 0; memory_index < sizeof(spe.paramcfgs[current_param].memory); memory_index := memory_index + 1) {
-                    paramcfgs[current_param].memory := spe.paramcfgs[current_param].memory[memory_index];
+            serviceprofiling_timer.start(30.0);
+            receive_Operation_Status();
 
-                    // Run until we reached the last element (determined later)
-                    var boolean last_element_not_reached := true;
-                    while(last_element_not_reached) {
-                        template Set_Parameter_Config param_config_request := {spe.service_name, paramcfgs};
-                        Mano.send(param_config_request);
+            // Repetitions
+            for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
+                log("Current SPP configuration: ", paramcfgs);
+                template Setup_SFC setup_sfc_req := { spe.service_name }
+                Mano.send(setup_sfc_req);
+                serviceprofiling_timer.start(30.0);
+                receive_Operation_Status();
 
-                        serviceprofiling_timer.start(30.0);
-                        receive_Operation_Status();
+                template Add_Agents add_agents_request := { spe.agents };
+                Mano.send(add_agents_request);
+                serviceprofiling_timer.start(30.0);
+                receive_Operation_Status();
 
-                        // Repetitions
-                        for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
-                            log("Current SPP configuration: ", paramcfgs);
-                            template Setup_SFC setup_sfc_req := { spe.service_name }
-                            Mano.send(setup_sfc_req);
-                            serviceprofiling_timer.start(30.0);
-                            receive_Operation_Status();
-
-                            template Add_Agents add_agents_request := { spe.agents };
-                            Mano.send(add_agents_request);
-                            serviceprofiling_timer.start(30.0);
-                            receive_Operation_Status();
-
-                            if(ispresent(spe.monitors)) {
-                                template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors };
-                                Mano.send(add_monitors_request);
-                                serviceprofiling_timer.start(30.0);
-                                receive_Operation_Status();
-                            }
-
-                            template Start_CMD start_cmd_request := { spe.agents };
-                            Mano.send(start_cmd_request);
-
-                            serviceprofiling_timer.start(valueof(spe.profiling_timeout));
-
-                            var Start_CMD_Reply cmd_reply := {};
-                            alt {
-                                [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
-                                    // We received a metric
-                                    // TODO: monitor_metrics might be empty/unbound
-                                    template Save_Metric save_metric_request := { spe.name, cmd_reply.metrics, cmd_reply.monitor_metrics, paramcfgs, run };
-                                    Report.send(save_metric_request);
-                                    //serviceprofiling_timer.start(30.0);
-                                    //receive_Operation_Status();
-                                    setverdict ( pass );
-                                   }
-                                [] Mano.receive {
-                                    // We received junk and that should not happen
-                                    setverdict(fail)
-                                   }
-                                [] serviceprofiling_timer.timeout {
-                                    // Collecting the metric concluded in a timeout
-                                    setverdict(inconc)
-                                   }
-                            }
-
-
-                            template Cleanup_Request cleanup_req := {}
-                            Mano.send(cleanup_req);
-                            serviceprofiling_timer.start(30.0);
-                            receive_Operation_Status();
-
-                            run := run + 1;
-                        }
-
-                        // Increment last parameter
-                        var integer last_param_index := sizeof(paramcfgs[current_param].additional_parameters) - 1;
-                        f_increment_parameter_config(paramcfgs, spe, current_param, last_param_index);
-
-                        // Check for overflows starting from the last parameter
-                        // This works like an odometer
-                        for(var integer i := last_param_index; i > 0; i := i - 1) {
-                            // If there is an overflow, set it to the initial value and increment
-                            // he previous value
-                            if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, i)) {
-                                f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, i);
-                                f_increment_parameter_config(paramcfgs, spe, current_param, i-1);
-                                
-                                
-                            } else {
-                                break;
-                            }
-                        }
-                        
-                        if(f_test_for_parameter_overflow(paramcfgs, spe, current_param, 0)) {
-                            // We tested the last element, so stop the additional parameter loop
-                            f_set_parameter_config_to_initial_value(paramcfgs, spe, current_param, 0);
-                            last_element_not_reached := false
-                        }
-                        
-                    }
+                if(ispresent(spe.monitors)) {
+                    template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors };
+                    Mano.send(add_monitors_request);
+                    serviceprofiling_timer.start(30.0);
+                    receive_Operation_Status();
                 }
+
+                template Start_CMD start_cmd_request := { spe.agents };
+                Mano.send(start_cmd_request);
+
+                serviceprofiling_timer.start(valueof(spe.profiling_timeout));
+
+                var Start_CMD_Reply cmd_reply := {};
+                alt {
+                    [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
+                        // We received a metric
+                        // TODO: monitor_metrics might be empty/unbound
+                        template Save_Metric save_metric_request := { spe.name, cmd_reply.metrics, cmd_reply.monitor_metrics, paramcfgs, run };
+                        Report.send(save_metric_request);
+                        //serviceprofiling_timer.start(30.0);
+                        //receive_Operation_Status();
+                        setverdict ( pass );
+                       }
+                    [] Mano.receive {
+                        // We received junk and that should not happen
+                        setverdict(fail)
+                       }
+                    [] serviceprofiling_timer.timeout {
+                        // Collecting the metric concluded in a timeout
+                        setverdict(inconc)
+                       }
+                }
+
+
+                template Cleanup_Request cleanup_req := {}
+                Mano.send(cleanup_req);
+                serviceprofiling_timer.start(30.0);
+                receive_Operation_Status();
+
+                run := run + 1;
+            }
+
+            // Increment last parameter
+            var integer last_param_index := sizeof(paramcfgs) - 1;
+            f_increment_parameter_config(paramcfgs, last_param_index);
+
+            // Check for overflows starting from the last parameter
+            // This works like an odometer
+            for(var integer i := last_param_index; i > 0; i := i - 1) {
+                // If there is an overflow, set it to the initial value and increment
+                // he previous value
+                if(f_test_for_parameter_overflow(paramcfgs, i)) {
+                    f_set_parameter_config_to_initial_value(paramcfgs, i);
+                    f_increment_parameter_config(paramcfgs, i-1);
+                } else {
+                    break;
+                }
+            }
+            
+            if(f_test_for_parameter_overflow(paramcfgs, 0)) {
+                // We tested the last element, so stop the loop
+                f_set_parameter_config_to_initial_value(paramcfgs, 0);
+                all_parameters_tested := true;
             }
         }
     }

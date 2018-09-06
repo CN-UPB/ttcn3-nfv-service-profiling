@@ -10,7 +10,7 @@ module TSPF_snort_iperf3_test {
             memory := { 4096 },
             storage := { 10 },
             additional_parameters := {
-                { "cpu_bw", { floatlist := {
+                { "cpu_time", { floatlist := {
                     0.4 }
                 }}
             }

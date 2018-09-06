@@ -6,20 +6,14 @@ module TSPF_snort_iperf3 {
     template ParameterConfigurationMacros paramcfg := {
         {
             function_id := "snort_vnf",
-            vcpus := { 1,2,3,4 },
-            memory := { 2048, 4096, 6192 },
+            vcpus := { 1,2 },
+            memory := { 2048,4096 },
             storage := { 10 },
             additional_parameters := {
-                { "cpu_bw", { macro := {
+                { "cpu_time", { macro := {
                     min := 0.1,
                     max := 1.0,
                     step := 0.3 }
-                }},
-                { "memswap_limit", { list :=
-                    { 3000, 4000, 5000, 6000 }
-                }},
-                { "datacenter", { charlist := {
-                    "dc1", "dc2" }
                 }}
             }
         }

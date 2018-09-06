@@ -9,3 +9,4 @@ build/*.d
 build/compile
 build/tsp-profiling
 build/config.cfg
+misc/vim-emu/service-projects/*.son
