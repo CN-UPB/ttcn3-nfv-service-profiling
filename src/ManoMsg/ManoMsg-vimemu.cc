@@ -103,7 +103,7 @@ void ManoMsg::Handle_Fd_Event_Readable(int /*fd*/)
  */
 void ManoMsg::user_map(const char * /*system_port*/)
 {
-    startDockerContainer();
+    start_docker_container();
 }
 
 /**
@@ -112,13 +112,13 @@ void ManoMsg::user_map(const char * /*system_port*/)
  */
 void ManoMsg::user_unmap(const char * /*system_port*/)
 {
-    stopAllAgents();
+    stop_all_agents();
 
     if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
-        stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
+        stop_sfc_service(sfc_service_uuid, sfc_service_instance_uuid);
     }
 
-    stopDockerContainer();
+    stop_docker_container();
 }
 
 void ManoMsg::user_start()
@@ -138,7 +138,7 @@ void ManoMsg::user_stop()
 void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 {
     if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
-        stopSfcService(sfc_service_uuid, sfc_service_instance_uuid);
+        stop_sfc_service(sfc_service_uuid, sfc_service_instance_uuid);
     }
 
     std::string service_name = std::string(((const char*)send_par.service__name()));
@@ -146,19 +146,24 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 
     log("Create SFC from %s", filepath.c_str());
 
-    sfc_service_uuid = uploadPackage(filepath);
-    if(sfc_service_uuid == "") {
+    sfc_service_uuid = upload_package(filepath);
+    if(sfc_service_uuid == "-1") {
+        send_unsuccessful_operation_status("Could not upload package");
         return;
     }
 
-    sfc_service_instance_uuid = startSfcService(sfc_service_uuid);
-    if(sfc_service_instance_uuid == "") {
+    sfc_service_instance_uuid = start_sfc_service(sfc_service_uuid);
+    if(sfc_service_instance_uuid == "-1") {
+        send_unsuccessful_operation_status("Could not instantiate SFC from package");
         return;
     }
 
     // We have to wait a moment so that the SFC is available
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    apply_additional_parameters_for_sfc();
+    if(!apply_additional_parameters_for_sfc()) {
+        send_unsuccessful_operation_status("Could not set additional parameters");
+        return;
+    }
 
     log("SFC created and running");
     send_successful_operation_status();
@@ -178,8 +183,15 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
 
         log("Setting up Agent %s with connection point %s from image %s", vnf_name.c_str(), vnf_cp.c_str(), vnf_image.c_str());
 
-        startAgent(vnf_name, vnf_image);
-        connectAgentToSfc(vnf_name, vnf_cp);
+        if(!start_agent(vnf_name, vnf_image)) {
+            send_unsuccessful_operation_status("Could not start Agent");
+            return;
+        }
+
+        if(!connect_agent_to_sfc(vnf_name, vnf_cp)) {
+            send_unsuccessful_operation_status("Could not connect Agent to SFC");
+            return;
+        }
     }
     send_successful_operation_status();
 }
@@ -191,9 +203,9 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 {
     log("Cleanup vim-emu!");
 
-    stopAllAgents();
-    stopDockerContainer();
-    startDockerContainer();
+    stop_all_agents();
+    stop_docker_container();
+    start_docker_container();
 
     log("Cleaned up vim-emu. New vim-emu instance is running!");
     send_successful_operation_status();
@@ -470,7 +482,7 @@ void ManoMsg::log(const char *fmt, ...) {
  * Uploads a SFC package (packaged as a SONATA package file) to vim-emu
  * @param filepath The filepath to the SFC package
  */
-std::string ManoMsg::uploadPackage(std::string filepath) {
+std::string ManoMsg::upload_package(std::string filepath) {
     log("Upload package from %s", filepath.c_str());
 
     // TODO: test if file exists
@@ -497,22 +509,20 @@ std::string ManoMsg::uploadPackage(std::string filepath) {
 
             return service_uuid;
         } else {
-            std::string reason("Could upload package to vim-emu. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
+            return "-1";
         }
     } catch (const http_exception &e) {
-        std::string reason("Could upload package to vim-emu: %s", e.what());
-        send_unsuccessful_operation_status(reason);
+        return "-1";
     }
 
-    return "";
+    return "-1";
 }
 
 /**
  * Instantiates the SFC
  * @param service_uuid Service UUID of the SFC
  */
-std::string ManoMsg::startSfcService(std::string service_uuid) {
+std::string ManoMsg::start_sfc_service(std::string service_uuid) {
     log("Start SFC with uuid %s", service_uuid.c_str());
 
     json::value postParameters = web::json::value::object();
@@ -536,14 +546,10 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
 
             return service_instance_uuid;
         } else {
-            std::string reason("Could not start SFC. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
-            return "";
+            return "-1";
         }
     } catch (const http_exception &e) {
-        std::string reason("Could not start SFC: %s", e.what());
-        send_unsuccessful_operation_status(reason);
-        return "";
+        return "-1";
     }
 }
 
@@ -552,8 +558,7 @@ std::string ManoMsg::startSfcService(std::string service_uuid) {
  * @param service_uuid Service UUID of the SFC
  * @param service_instance_uuid Service Instance UUID of the SFC
  */
-void ManoMsg::stopSfcService(std::string service_uuid, std::string service_instance_uuid) {
-    return;
+bool ManoMsg::stop_sfc_service(std::string service_uuid, std::string service_instance_uuid) {
     log("Stop service with uuid %s and instance uuid %s", service_uuid.c_str(), service_instance_uuid.c_str());
 
     json::value postParameters = web::json::value::object();
@@ -572,23 +577,19 @@ void ManoMsg::stopSfcService(std::string service_uuid, std::string service_insta
 
         if(response.status_code() == status_codes::OK) {
             log("Stopped service");
-            return;
+            return true;
         } else {
-            std::string reason("Could not stop SFC. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
+            return false;
         }
     } catch (const http_exception &e) {
-        std::string reason("Could not stop SFC: %s", e.what());
-        send_unsuccessful_operation_status(reason);
+        return false;
     }
-
-    log("Stopped service");
 }
 
 /**
  * Applies the additional parameters that were parsed when the Set_Parameter_Config Reply was sent
  */
-void ManoMsg::apply_additional_parameters_for_sfc() {
+bool ManoMsg::apply_additional_parameters_for_sfc() {
     log("Setting additional parameters");
     for(const auto& vnf_map : vnf_additional_parameters) {
         std::string vnf_name(vnf_map.first);
@@ -612,17 +613,18 @@ void ManoMsg::apply_additional_parameters_for_sfc() {
                 if(response.status_code() == status_codes::OK) {
                     log("Setting the parameter %s of %s to %s was successful", parameter_name.c_str(), vnf_name.c_str(), value.c_str());
                 } else {
-                    std::string reason = str(boost::format("Could not set the parameter %s of %s to %s, status_code: %d") % parameter_name.c_str() % vnf_name.c_str() % value.c_str() % response.status_code());
-                    send_unsuccessful_operation_status(reason);
+                    log("Setting the parameter %s of %s to %s was NOT successful", parameter_name.c_str(), vnf_name.c_str(), value.c_str());
+                    return false;
                 }
             } catch (const http_exception &e) {
-                std::string reason = str(boost::format("Could not set the parameter %s of %s to %s: %s") % parameter_name.c_str() % vnf_name.c_str() % value.c_str() % e.what());
-                send_unsuccessful_operation_status(reason);
+                log("Setting the parameter %s of %s to %s was NOT successful", parameter_name.c_str(), vnf_name.c_str(), value.c_str());
+                return false;
             }
 
         }
     }
-    log("Finished setting additional parameters");
+
+    return true;
 }
 
 /**
@@ -630,7 +632,7 @@ void ManoMsg::apply_additional_parameters_for_sfc() {
  * @param vnf_name Name of the VNF
  * @param vnf_image Image of the VNF
  */
-void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
+bool ManoMsg::start_agent(std::string vnf_name, std::string vnf_image) {
     log("Start Agent VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
 
     json::value postParameters = web::json::value::object();
@@ -658,35 +660,39 @@ void ManoMsg::startAgent(std::string vnf_name, std::string vnf_image) {
 
             log("Agent VNF %s created", vnf_name.c_str());
 
-            return;
+            return true;
         } else {
-            std::string reason("Could not start Agent VNF. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
+            return false;
         }
     } catch (const http_exception &e) {
-        std::string reason("Could not start Agent VNF: %s", e.what());
-        send_unsuccessful_operation_status(reason);
+        return false;
     }
 }
 
 /**
  * Stops all Agent VNFs 
  */
-void ManoMsg::stopAllAgents() {
+bool ManoMsg::stop_all_agents() {
     log("Stopping all Agents");
 
+    bool successful = true;
+
     for(std::string agent: running_agents) {
-        stopAgent(agent);
+        if(!stop_agent(agent)) {
+            successful = false;
+        }
     }
 
     running_agents.clear();
+
+    return successful;
 }
 
 /**
  * Stops an Agent
  * @param vnf_name The VNF that should be stopped
  */
-void ManoMsg::stopAgent(std::string vnf_name) {
+bool ManoMsg::stop_agent(std::string vnf_name) {
     log("Stopping Agent %s", vnf_name.c_str());
 
     http_client client(vimemu_rest_url);
@@ -702,14 +708,12 @@ void ManoMsg::stopAgent(std::string vnf_name) {
             //running_vnfs.push_back(vnf_name); TODO: Reverse operation (delete)
             log("Agent VNF %s stopped", vnf_name.c_str());
 
-            return;
+            return true;
         } else {
-            std::string reason("Could not stop Agent. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
+            return false;
         }
     } catch (const http_exception &e) {
-        std::string reason("Could not stop Agent: %s", e.what());
-        send_unsuccessful_operation_status(reason);
+        return false;
     }
 }
 
@@ -718,7 +722,7 @@ void ManoMsg::stopAgent(std::string vnf_name) {
  * @param vnf_name The name of the VNF that should be connected to the SFC
  * @param vnf_cp The connection point that the VNF should be connected to
  */
-void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
+bool ManoMsg::connect_agent_to_sfc(std::string vnf_name, std::string vnf_cp) {
     log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
 
 
@@ -752,65 +756,71 @@ void ManoMsg::connectAgentToSfc(std::string vnf_name, std::string vnf_cp) {
         if(response.status_code() == status_codes::OK) {
             log("Connected to connection point");
 
-            return;
+            return true;
         } else {
-            std::string reason("Could not create Agent VNF. Status: %d", response.status_code());
-            send_unsuccessful_operation_status(reason);
+            return false;
         }
     } catch (const http_exception &e) {
-        std::string reason("Could not create Agent VNF: %s", e.what());
-        send_unsuccessful_operation_status(reason);
+        return false;
     }
-
-    log("%s is connected to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
 }
 
 /**
  * Start the local vim-emu Docker container
  */
-void ManoMsg::startDockerContainer() {
+void ManoMsg::start_docker_container() {
     log("Starting docker container");
 
     std::string cmd = "sh -c \"docker run --name vim-emu -d --rm --privileged --pid='host' -v /var/run/docker.sock:/var/run/docker.sock vim-emu-img\"";
     start_local_program_and_wait(cmd);
 
-    // Test connection to vim-emu (and wait until it is available)
-    http_client client(gatekeeper_rest_url);
-    auto query =  uri_builder("/instantiations").to_string();
-
-    int retries = 20;
-    bool rest_online = false;
-    while(!rest_online) {
-        try {
-            http_response response = client.request(methods::GET, query).get();
-
-            if(response.status_code() == status_codes::OK) {
-                rest_online = true;
-            }
-        } catch (const http_exception &e) {
-            log("Could connect to vim-emu: %s", e.what());
+    for(int i = 3; i >= 0; i--) {
+        if(i == 0) {
+            TTCN_error("Could not connect to vim-emu!");
         }
 
-        if(retries <= 0) {
-            TTCN_error("Could connect to vim-emu!");
-        } else if (!rest_online) {
-            log("Retrying request");
-            // wait 2 seconds if the request did not work
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+        if(wait_for_vim_emu(100)) {
+            break;
+        } else {
+            stop_docker_container();
         }
-
-        retries--;
     }
 
     log("Started docker container");
 }
 
+bool ManoMsg::wait_for_vim_emu(int retries) {
+    // Test connection to vim-emu (and wait until it is available)
+    http_client client(gatekeeper_rest_url);
+    auto query =  uri_builder("/instantiations").to_string();
+
+    while(retries > 0) {
+        try {
+            http_response response = client.request(methods::GET, query).get();
+
+            if(response.status_code() == status_codes::OK) {
+                return true;
+            }
+        } catch (const http_exception &e) {
+            log("Could connect to vim-emu: %s", e.what());
+        }
+
+        log("Retrying request to vim-emu");
+        // wait 2 seconds if the request did not work
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        retries--;
+    }
+
+    return false;
+}
+
 /**
- * Stops all local Docker containers
+ * Stops the vim-emu docker container
  */
-void ManoMsg::stopDockerContainer() {
+void ManoMsg::stop_docker_container() {
     log("Stopping docker container");
-    std::string cmd = "sh -c \"docker stop $(docker ps -q)\"";
+    std::string cmd = "sh -c \"docker stop vim-emu\"";
 
     start_local_program_and_wait(cmd);
 

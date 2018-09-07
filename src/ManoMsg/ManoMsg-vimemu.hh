@@ -73,16 +73,17 @@ namespace TSP__PortType {
 
             /* Other functions */
             void log(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
-            std::string uploadPackage(std::string filepath);
-            std::string startSfcService(std::string service_uuid);
-            void apply_additional_parameters_for_sfc();
-            void stopSfcService(std::string service_uuid, std::string service_instance_uuid);
-            void connectAgentToSfc(std::string vnf_name, std::string vnf_cp);
-            void startAgent(std::string vnf_name, std::string vnf_image);
-            void stopAllAgents();
-            void stopAgent(std::string vnf_name);
-            void startDockerContainer();
-            void stopDockerContainer();
+            std::string upload_package(std::string filepath);
+            std::string start_sfc_service(std::string service_uuid);
+            bool apply_additional_parameters_for_sfc();
+            bool stop_sfc_service(std::string service_uuid, std::string service_instance_uuid);
+            bool connect_agent_to_sfc(std::string vnf_name, std::string vnf_cp);
+            bool start_agent(std::string vnf_name, std::string vnf_image);
+            bool stop_all_agents();
+            bool stop_agent(std::string vnf_name);
+            void start_docker_container();
+            void stop_docker_container();
+            bool wait_for_vim_emu(int retries);
             std::string start_local_program(std::string, bool background=false);
             void start_local_program_and_wait(std::string command);
             void send_unsuccessful_operation_status(std::string reason);
