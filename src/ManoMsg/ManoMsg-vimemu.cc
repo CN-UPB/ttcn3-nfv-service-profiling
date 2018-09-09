@@ -774,15 +774,16 @@ void ManoMsg::start_docker_container() {
     std::string cmd = "sh -c \"docker run --name vim-emu -d --rm --privileged --pid='host' -v /var/run/docker.sock:/var/run/docker.sock vim-emu-img\"";
     start_local_program_and_wait(cmd);
 
-    for(int i = 3; i >= 0; i--) {
+    for(int i = 10; i >= 0; i--) {
         if(i == 0) {
             TTCN_error("Could not connect to vim-emu!");
         }
 
-        if(wait_for_vim_emu(100)) {
+        if(wait_for_vim_emu(30)) {
             break;
         } else {
             stop_docker_container();
+            start_local_program_and_wait(cmd);
         }
     }
 
