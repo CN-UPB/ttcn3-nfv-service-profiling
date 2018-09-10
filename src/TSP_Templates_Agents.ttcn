@@ -15,7 +15,7 @@ module TSP_Templates_Agents {
         image := "tsp-iperf3-ssh",
         datacenter := dc,
         cmd := "iperf3 -t 5 -J -c ${VNF:IP4:server}",
-        output_parsers := { "iperf3-json-bits_per_second" }
+        output_parsers := { "iperf3-json-bits_per_second", "iperf3-json-mean_rtt" }
     };
 
     template Agent iperf3client_udp(charstring cp, charstring dc) modifies iperf3client := {

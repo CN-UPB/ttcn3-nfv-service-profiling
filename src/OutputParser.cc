@@ -7,7 +7,7 @@
 namespace OutputParser {
 
     std::string parse(std::string input, std::string parser) {
-        if(parser == "iperf3-json-bits_per_second") {
+        if(parser.find("iperf3-json") == 0) {
             return parse_iperf3(input, parser);
         } else if(parser.find("wrk-json") == 0) {
             return parse_wrk(input, parser);
@@ -54,11 +54,9 @@ namespace OutputParser {
     }
 
     std::string parse_iperf3(std::string input, std::string parser) {
+        web::json::value j = web::json::value::parse(input);
+        web::json::value metric;
         if(parser == "iperf3-json-bits_per_second") {
-            web::json::value j = web::json::value::parse(input);
-
-            web::json::value metric;
-
             if(j.has_field("end") && j.at("end").has_field("sum_received") && j.at("end").at("sum_received").has_field("bits_per_second")) {
                 metric = j.at("end").at("sum_received").at("bits_per_second");
             } else {
@@ -66,9 +64,16 @@ namespace OutputParser {
             }
 
             return metric.serialize();
-        } else {
-            TTCN_error("received unknown parser argument");
-        }
-    }
+        } else if(parser == "iperf3-json-mean_rtt") {
+            if(j.has_field("end") && j.at("end").has_field("streams") && j.at("end").at("streams").has_field("sender") &&
+                    j.at("end").at("streams").at("sender").has_field("mean_rtt")) {
+                metric = j.at("end").at("streams").at("sender").at("mean_rtt");
 
+            } else {
+                TTCN_error("received unknown parser argument");
+            }
+        }
+
+        return metric.serialize();
+    }
 }
