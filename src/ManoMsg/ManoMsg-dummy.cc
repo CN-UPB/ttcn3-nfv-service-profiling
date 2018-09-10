@@ -87,7 +87,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
     monitor_metrics[0] = monitor_metric;
 
     metric.output__parser() = CHARSTRING("dummy-parser");
-    metric.measured__value() = CHARSTRING("123456");
+    metric.metric__value() = CHARSTRING("123456");
 
     metrics[0] = metric;
 

@@ -3,39 +3,39 @@ module TSP_Functions {
     import from TSP_Types all;
     import from TSP_PortType all;
 
-    function f_create_starting_parameter_config(template TSP_Experiment spe) return template ParameterConfigurations {
+    function f_create_starting_parameter_config(template ParameterConfigurationMacros spe_params) return template ParameterConfigurations {
         var template ParameterConfigurations paramcfgs := {};
 
-        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
+        for(var integer i := 0; i < sizeof(spe_params); i := i + 1) {
             var integer index_next_element := sizeof(paramcfgs);
-            // Main parameter configs, TODO: Create function work code reuse
+            // Main parameter configs, TODO: Create function for code reuse
             var template ParameterConfiguration cpu_value := {
-                function_id := valueof(spe.paramcfgs[i].function_id),
+                function_id := valueof(spe_params[i].function_id),
                 parameter_name := "vcpus",
-                value_list := f_paramlist_to_charlist(valueof(spe.paramcfgs[i].vcpus)),
-                current_value := int2str(valueof(spe.paramcfgs[i].vcpus[0]))
+                value_list := f_paramlist_to_charlist(valueof(spe_params[i].vcpus)),
+                current_value := int2str(valueof(spe_params[i].vcpus[0]))
             };
             paramcfgs[index_next_element] := cpu_value;
             var template ParameterConfiguration memory_value := {
-                function_id := valueof(spe.paramcfgs[i].function_id),
+                function_id := valueof(spe_params[i].function_id),
                 parameter_name := "memory",
-                value_list := f_paramlist_to_charlist(valueof(spe.paramcfgs[i].memory)),
-                current_value := int2str(valueof(spe.paramcfgs[i].memory[0]))
+                value_list := f_paramlist_to_charlist(valueof(spe_params[i].memory)),
+                current_value := int2str(valueof(spe_params[i].memory[0]))
             };
             paramcfgs[index_next_element+1] := memory_value;
             var template ParameterConfiguration storage_value := {
-                function_id := valueof(spe.paramcfgs[i].function_id),
+                function_id := valueof(spe_params[i].function_id),
                 parameter_name := "storage",
-                value_list := f_paramlist_to_charlist(valueof(spe.paramcfgs[i].storage)),
-                current_value := int2str(valueof(spe.paramcfgs[i].storage[0]))
+                value_list := f_paramlist_to_charlist(valueof(spe_params[i].storage)),
+                current_value := int2str(valueof(spe_params[i].storage[0]))
             };
             paramcfgs[index_next_element+2] := storage_value;
 
             // Additional parameter configs
-            if(isbound(spe.paramcfgs[i].additional_parameters)) {
-                for(var integer j := 0; j < sizeof(spe.paramcfgs[i].additional_parameters); j := j + 1) {
+            if(isbound(spe_params[i].additional_parameters)) {
+                for(var integer j := 0; j < sizeof(spe_params[i].additional_parameters); j := j + 1) {
                     index_next_element := sizeof(paramcfgs);
-                    template ParameterDef additional_parameter := spe.paramcfgs[i].additional_parameters[j];
+                    template ParameterDef additional_parameter := spe_params[i].additional_parameters[j];
                     select union (valueof(additional_parameter.parameter)) {
                         case (macro) {
                             var ParameterCharList paramcharlist;
@@ -51,7 +51,7 @@ module TSP_Functions {
                             }
 
                             paramcfgs[j+index_next_element] := {
-                                function_id := valueof(spe.paramcfgs[i].function_id),
+                                function_id := valueof(spe_params[i].function_id),
                                 parameter_name := additional_parameter.name, 
                                 value_list := paramcharlist,
                                 current_value := float2str(valueof(additional_parameter.parameter.macro.min))
@@ -59,7 +59,7 @@ module TSP_Functions {
                         }
                         case (list) {
                             paramcfgs[j+index_next_element] := {
-                                function_id := valueof(spe.paramcfgs[i].function_id),
+                                function_id := valueof(spe_params[i].function_id),
                                 parameter_name := additional_parameter.name,
                                 value_list := f_paramlist_to_charlist(valueof(additional_parameter.parameter.list)),
                                 current_value := int2str(valueof(additional_parameter.parameter.list[0]))
@@ -67,7 +67,7 @@ module TSP_Functions {
                         }
                         case (floatlist) {
                             paramcfgs[j+index_next_element] := {
-                                function_id := valueof(spe.paramcfgs[i].function_id),
+                                function_id := valueof(spe_params[i].function_id),
                                 parameter_name := additional_parameter.name,
                                 value_list := f_paramfloatlist_to_charlist(valueof(additional_parameter.parameter.floatlist)),
                                 current_value := float2str(valueof(additional_parameter.parameter.floatlist[0]))
@@ -75,10 +75,18 @@ module TSP_Functions {
                         }
                         case (charlist) {
                             paramcfgs[j+index_next_element] := {
-                                function_id := valueof(spe.paramcfgs[i].function_id),
+                                function_id := valueof(spe_params[i].function_id),
                                 parameter_name := additional_parameter.name,
                                 value_list := valueof(additional_parameter.parameter.charlist),
                                 current_value := valueof(additional_parameter.parameter.charlist[0])
+                            };
+                        }
+                        case (single_value) {
+                            paramcfgs[j+index_next_element] := {
+                                function_id := valueof(spe_params[i].function_id),
+                                parameter_name := additional_parameter.name,
+                                value_list := { valueof(additional_parameter.parameter.single_value) },
+                                current_value := valueof(additional_parameter.parameter.single_value)
                             };
                         }
                     }
@@ -90,6 +98,7 @@ module TSP_Functions {
 
         return paramcfgs;
     }
+
 
     function f_increment_parameter_config(inout template ParameterConfigurations paramcfgs, integer index_param) {
         log("Incrementing ", paramcfgs[index_param].parameter_name);
@@ -105,6 +114,7 @@ module TSP_Functions {
         }
     }
 
+
     function f_set_parameter_config_to_initial_value(inout template ParameterConfigurations paramcfgs, integer index_param) {
         paramcfgs[index_param].current_value := valueof(paramcfgs[index_param].value_list[0]);
     }
@@ -117,6 +127,17 @@ module TSP_Functions {
         }
 
         // We did not find the value
+        return -1;
+    }
+
+    function f_find_metric_index_from_output_parser(Metrics metrics, charstring output_parser) return integer {
+        for(var integer i := 0; i < sizeof(metrics); i := i + 1) {
+            if(metrics[i].output_parser == output_parser) {
+                return i;
+            }
+        }
+
+        // error
         return -1;
     }
 

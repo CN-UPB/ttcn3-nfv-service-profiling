@@ -17,7 +17,7 @@ module TSPF_haproxy_nginxlb_nginx_wrk {
             }
         },{
             function_id := "nginx-vnf",
-            vcpus := { 1,2 },
+            vcpus := { 1,2,3,4 },
             memory := { 128, 256 },
             storage := { 10 },
             additional_parameters := {
@@ -86,7 +86,7 @@ module TSPF_haproxy_nginxlb_nginx_wrk {
 
     };
 
-    template TSP_Experiment spexperiment := {
+    template TSP_Serviceprofiling_Experiment spexperiment := {
         name := "haproxy-nginxlb-nginx-wrk",
         repetitions := 1,
         profiling_timeout := 300.0,
@@ -97,6 +97,6 @@ module TSPF_haproxy_nginxlb_nginx_wrk {
     };
 
     control {
-        execute(SimpleTSP(spexperiment));
+        execute(TC_serviceprofiling(spexperiment));
     };
 }

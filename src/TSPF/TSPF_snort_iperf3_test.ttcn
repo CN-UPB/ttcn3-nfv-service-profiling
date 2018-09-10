@@ -34,7 +34,7 @@ module TSPF_snort_iperf3_test {
         }
     };
 
-    template TSP_Experiment spexperiment := {
+    template TSP_Serviceprofiling_Experiment spexperiment := {
         name := "snort-iperf3",
         repetitions := 1,
         profiling_timeout := 300.0,
@@ -45,6 +45,6 @@ module TSPF_snort_iperf3_test {
     };
 
     control {
-        execute(SimpleTSP(spexperiment));
+        execute(TC_serviceprofiling(spexperiment));
     };
 }

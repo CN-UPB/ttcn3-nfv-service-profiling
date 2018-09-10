@@ -64,7 +64,7 @@ module TSPF_haproxy_nginx_wrk {
         }
     };
 
-    template TSP_Experiment spexperiment := {
+    template TSP_Serviceprofiling_Experiment spexperiment := {
         name := "haproxy-nginx-wrk",
         repetitions := 10,
         profiling_timeout := 300.0,
@@ -75,6 +75,6 @@ module TSPF_haproxy_nginx_wrk {
     };
 
     control {
-        execute(SimpleTSP(spexperiment));
+        execute(TC_serviceprofiling(spexperiment));
     };
 }

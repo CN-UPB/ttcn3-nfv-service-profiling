@@ -1,38 +1,33 @@
 module TSP_Testcases {
-
     import from TSP_Types all;
     import from TSP_PortType all;
     import from TSP_Functions all;
 
-    testcase SimpleTSP(template TSP_Experiment spe) runs on MANO system MANO {
+    // A service profiling test case for NFV
+    testcase TC_serviceprofiling(template TSP_Serviceprofiling_Experiment spe) runs on MANO system MANO {
         map(mtc:Mano, system:Mano);
         map(mtc:Report, system:Report);
         
-        var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe);
+        // Create a flat list of parameter configurations that will be used to increment parameter configurations
+        // and saving the current state of parameter configurations
+        var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe.paramcfgs);
 
+        // We current number of runs
         var integer run := 0;
 
-        var bitstring run_status;
-        for(var integer i := 0; i < sizeof(spe.paramcfgs); i := i + 1) {
-            run_status[i] := '0'B;
-        }
-
-        log("run_status: ", run_status);
-        run_status := run_status @> 1;
-        log("run_status: ", run_status);
-
+        // False, if there are SPP parameters that should be tested
         var boolean all_parameters_tested := false;
 
         // Parameter Configs
         while(all_parameters_tested == false) {
-            template Set_Parameter_Config param_config_request := { spe.service_name, paramcfgs };
-            Mano.send(param_config_request);
-
-            serviceprofiling_timer.start(30.0);
-            receive_Operation_Status();
-
             // Repetitions
             for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
+                template Set_Parameter_Config param_config_request := { spe.service_name, paramcfgs };
+                Mano.send(param_config_request);
+
+                serviceprofiling_timer.start(30.0);
+                receive_Operation_Status();
+
                 log("Current SPP configuration: ", paramcfgs);
                 template Setup_SFC setup_sfc_req := { spe.service_name }
                 Mano.send(setup_sfc_req);
@@ -53,7 +48,7 @@ module TSP_Testcases {
 
                 template Start_CMD start_cmd_request := { spe.agents };
                 Mano.send(start_cmd_request);
-
+               
                 serviceprofiling_timer.start(valueof(spe.profiling_timeout));
 
                 var Start_CMD_Reply cmd_reply := {};
@@ -65,7 +60,7 @@ module TSP_Testcases {
                         Report.send(save_metric_request);
                         //serviceprofiling_timer.start(30.0);
                         //receive_Operation_Status();
-                        setverdict ( pass );
+                        setverdict(pass);
                        }
                     [] Mano.receive {
                         // We received junk and that should not happen
@@ -108,6 +103,67 @@ module TSP_Testcases {
                 f_set_parameter_config_to_initial_value(paramcfgs, 0);
                 all_parameters_tested := true;
             }
+        }
+    }
+
+    // A verification test case for NFV service profiling
+    testcase TC_verification(template TSP_Verification_Experiment spe) runs on MANO system MANO {
+        map(mtc:Mano, system:Mano);
+        var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe.paramcfgs);
+
+        // TODO: The following code can probably be shared with the serviceprofiling testcase (although the input types are different)
+        template Set_Parameter_Config param_config_request := { spe.service_name, paramcfgs };
+        Mano.send(param_config_request);
+
+        serviceprofiling_timer.start(30.0);
+        receive_Operation_Status();
+
+        template Setup_SFC setup_sfc_req := { spe.service_name }
+        Mano.send(setup_sfc_req);
+        serviceprofiling_timer.start(30.0);
+        receive_Operation_Status();
+
+        template Add_Agents add_agents_request := { spe.agents };
+        Mano.send(add_agents_request);
+        serviceprofiling_timer.start(30.0);
+        receive_Operation_Status();
+
+        template Start_CMD start_cmd_request := { spe.agents };
+        Mano.send(start_cmd_request);
+        
+        serviceprofiling_timer.start(valueof(spe.verification_timeout));
+
+        var Start_CMD_Reply cmd_reply := {};
+        alt {
+            [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
+                // We received a metric
+                //template Save_Metric save_metric_request := { spe.name, cmd_reply.metrics, cmd_reply.monitor_metrics, paramcfgs, run };
+                for(var integer i := 0; i < sizeof(spe.metrics); i := i + 1) {
+                    var integer cmd_reply_metric_index := f_find_metric_index_from_output_parser(cmd_reply.metrics, valueof(spe.metrics[i].output_parser));
+
+                    // Test if the value is too small
+                    if(str2float(cmd_reply.metrics[cmd_reply_metric_index].metric_value) <= str2float(valueof(spe.metrics[i].metric_value)) * (1.0 - valueof(spe.deviation))) {
+                        log("The metric is too small: ", valueof(spe.metrics[i].output_parser));
+                        setverdict(fail);
+                    }
+                   
+                    // Test if the value is too large
+                    if(str2float(cmd_reply.metrics[cmd_reply_metric_index].metric_value) >= str2float(valueof(spe.metrics[i].metric_value)) * (1.0 + valueof(spe.deviation))) {
+                        log("The metric is too large: ", valueof(spe.metrics[i].output_parser));
+                        setverdict(fail);
+                    }
+                }
+
+                setverdict(pass);
+               }
+            [] Mano.receive {
+                // We received junk and that should not happen
+                setverdict(fail)
+               }
+            [] serviceprofiling_timer.timeout {
+                // Collecting the metric concluded in a timeout
+                setverdict(inconc)
+               }
         }
     }
 }

@@ -1,0 +1,57 @@
+module TSPF_haproxy_nginx_wrk_verification {
+    import from TSP_Types all;
+    import from TSP_Testcases all;
+
+    template ParameterConfigurationMacros paramcfg := {
+        {
+            function_id := "haproxy-vnf",
+            vcpus := { 4 },
+            memory := { 512 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_time", { single_value := "0.5" } }
+            }
+        },{
+            function_id := "nginx-vnf",
+            vcpus := { 4 },
+            memory := { 512 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_time", { single_value := "0.5" } }
+            }
+        }
+    };
+
+    template Metrics metrics := {
+        { "wrk-json-requests", "72900"},
+        { "wrk-json-bytes", "25875875"},
+        { "wrk-json-latency-99percentile", "693508"}
+    }
+
+    template Agent wrk_client(charstring cp, charstring dc) := {
+        name := "client",
+        connection_point := cp,
+        image := "tsp-wrk-ssh",
+        datacenter := dc,
+        cmd := "wrk -s /json.lua http://10.0.0.3",
+        output_parsers := { "wrk-json-requests", "wrk-json-bytes", "wrk-json-latency-99percentile" }
+    };
+
+    template Agents agent_list := {
+        wrk_client("haproxy-vnf:input", "dc1")
+    };
+
+    template TSP_Verification_Experiment spexperiment := {
+        service_name := "tsp-haproxy-nginx-service.son",
+        repetitions := 10,
+        deviation := 0.10,
+        verification_timeout := 300.0,
+        paramcfgs := paramcfg,
+        metrics := metrics,
+        agents := agent_list
+    };
+
+    control {
+        execute(TC_verification(spexperiment));
+    };
+}

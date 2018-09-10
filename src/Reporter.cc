@@ -143,7 +143,7 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
 
     // and at last the metrics
     for(int i = 0; i < metrics.size_of(); i++) {
-        csvfile << "," << metrics[i].measured__value();
+        csvfile << "," << metrics[i].metric__value();
     }
     csvfile << std::endl;
 

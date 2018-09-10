@@ -360,7 +360,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                 TSP__Types::Metric metric;
 
                 metric.output__parser() = CHARSTRING(agent_metric.first.c_str());
-                metric.measured__value() = CHARSTRING(agent_metric.second.c_str());
+                metric.metric__value() = CHARSTRING(agent_metric.second.c_str());
 
                 int index_next_element = metrics.is_bound() ? metrics.size_of() : 0;
                 metrics[index_next_element] = metric;

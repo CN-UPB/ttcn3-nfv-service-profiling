@@ -1,5 +1,5 @@
 module TSP_Types {
-  type record TSP_Experiment {
+  type record TSP_Serviceprofiling_Experiment {
     charstring name,
     integer repetitions,
     float profiling_timeout,
@@ -32,7 +32,8 @@ module TSP_Types {
         ParameterList list,
         ParameterFloatList floatlist,
         ParameterCharList charlist,
-        ParameterMacro macro
+        ParameterMacro macro,
+        charstring single_value
       } parameter
   };
   type record of ParameterDef ParameterDefs;
@@ -54,7 +55,6 @@ module TSP_Types {
       charstring cmd optional,
       charlist output_parsers optional
   };
-
   type record of Agent Agents;
 
   type record Monitor {
@@ -62,9 +62,20 @@ module TSP_Types {
       integer interval,
       charlist metrics
   };
-
   type record of Monitor Monitors;
 
+  // Section: Verification
+  type record TSP_Verification_Experiment {
+      charstring service_name,
+      integer repetitions,
+      float deviation,
+      float verification_timeout,
+      ParameterConfigurationMacros paramcfgs,
+      Metrics metrics,
+      Agents agents
+  };
+
+  // Section: Messages between SUT and TE
   type record Setup_SFC { charstring service_name };
 
   type record Add_Monitors {
@@ -106,8 +117,6 @@ module TSP_Types {
       float step
   };
 
-  type record of integer integerList;
-
   type record Cleanup_Request { };
 
   type record Operation_Status {
@@ -125,8 +134,7 @@ module TSP_Types {
 
   type record Metric {
       charstring output_parser,
-      charstring measured_value
+      charstring metric_value
   };
-
   type record of Metric Metrics;
 }
