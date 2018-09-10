@@ -407,6 +407,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
         } else {
             if(additional_parameter_name == "cpu_time") {
                 additional_parameter_name = "cpu_bw";
+            } else if(additional_parameter_name == "numa_nodes") {
+                additional_parameter_name = "cpuset_mems";
             }
             // We handle additional parameters at another location
             vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
