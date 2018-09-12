@@ -34,7 +34,7 @@ module TSP_Functions {
             // Additional parameter configs
             if(isbound(spe_params[i].additional_parameters)) {
                 for(var integer j := 0; j < sizeof(spe_params[i].additional_parameters); j := j + 1) {
-                    index_next_element := sizeof(paramcfgs);
+                    index_next_element := sizeof(paramcfgs) - 1;
                     template ParameterDef additional_parameter := spe_params[i].additional_parameters[j];
                     select union (valueof(additional_parameter.parameter)) {
                         case (macro) {
