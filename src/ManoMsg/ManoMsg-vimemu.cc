@@ -217,6 +217,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
  */
 void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 {
+    log("Started to handle the Start_CMD request");
     auto agents = (const TSP__Types::Agents)send_par.agents();
 
     // Start the command for each Agent
@@ -282,6 +283,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                 log("Collected metric: %s", agent_metrics[output_parser].c_str());
             }
 
+            log("Stopping Monitors");
             // Stop all monitors
             for(const auto & monitor : monitor_objects) {
                 monitor->stop();
@@ -289,9 +291,10 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             }
             monitor_objects.clear();
 
+            log("Stopped Monitors");
+
             // Construct the reply
             TSP__Types::Monitor__Metrics monitor_metrics;
-
             for(auto & future : monitor_futures) {
                 try {
                     std::map<std::string, std::map<std::string, std::vector<std::string>>> metrics_vnfs = future.get();
@@ -373,6 +376,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             incoming_message(cmd_reply);
         }
     }
+
+    log("Handled the Start_CMD Request");
 }
 
 /**
