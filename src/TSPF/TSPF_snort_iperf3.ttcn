@@ -1,6 +1,6 @@
 module TSPF_snort_iperf3 {
     import from TSP_Types all;
-    import from TSP_Templates_Agents all;
+    import from TSP_Templates all;
     import from TSP_Testcases all;
 
     template ParameterConfigurationMacros paramcfg := {

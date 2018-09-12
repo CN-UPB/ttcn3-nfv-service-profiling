@@ -1,6 +1,6 @@
 module TSPF_empty_iperf3 {
     import from TSP_Types all;
-    import from TSP_Templates_Agents all;
+    import from TSP_Templates all;
     import from TSP_Testcases all;
 
     template ParameterConfigurationMacros paramcfg := {
@@ -36,15 +36,7 @@ module TSPF_empty_iperf3 {
     };
 
     template Monitors monitor_list := {
-        {
-            vnf_name := "empty-vnf1",
-            interval := 1,
-            metrics := {
-                "cpu-utilization",
-                "memory-maximum",
-                "memory"
-            }
-        }
+        docker_monitor("empty-vnf1", 1)
     };
 
     template TSP_Serviceprofiling_Experiment spexperiment := {

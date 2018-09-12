@@ -1,6 +1,7 @@
 module TSPF_haproxy_nginx_wrk {
     import from TSP_Types all;
     import from TSP_Testcases all;
+    import from TSP_Templates all;
 
     template ParameterConfigurationMacros paramcfg := {
         {
@@ -45,23 +46,8 @@ module TSPF_haproxy_nginx_wrk {
     };
 
     template Monitors monitor_list := {
-        {
-            vnf_name := "haproxy-vnf",
-            interval := 1,
-            metrics := {
-                "cpu-utilization",
-                "memory-maximum",
-                "memory-current"
-            }
-        },{
-            vnf_name := "nginx-vnf",
-            interval := 1,
-            metrics := {
-                "cpu-utilization",
-                "memory-maximum",
-                "memory-current"
-            }
-        }
+        docker_monitor("nginx-vnf", 1),
+        docker_monitor("haproxy-vnf", 1)
     };
 
     template TSP_Serviceprofiling_Experiment spexperiment := {

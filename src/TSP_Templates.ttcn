@@ -1,4 +1,4 @@
-module TSP_Templates_Agents {
+module TSP_Templates {
     import from TSP_Types all;
 
     template Agent iperf3server(charstring cp, charstring dc) := {
@@ -37,5 +37,16 @@ module TSP_Templates_Agents {
         image := "tsp-nginx-ssh",
         datacenter := dc,
         cmd := "service nginx restart"
+    };
+
+    /* Generic Monitor for all supported metrics for Docker */
+    template Monitor docker_monitor(charstring vnf, integer interval) := {
+        vnf_name := vnf,
+        interval := interval,
+        metrics := {
+            "cpu-utilization",
+            "memory-maximum",
+            "memory-current"
+        }
     };
 }

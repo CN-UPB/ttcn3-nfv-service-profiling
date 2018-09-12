@@ -1,0 +1,29 @@
+module TSPF_haproxy_nginxlb_nginx_ab2 {
+    import from TSP_Types all;
+    import from TSP_Testcases all;
+    import from TSPF_haproxy_nginxlb_nginx_wrk all;
+
+    template Agent ab2_client(charstring cp, charstring dc) := {
+        name := "client",
+        connection_point := cp,
+        image := "tsp-ab2-ssh",
+        datacenter := dc,
+        cmd := "ab http://10.0.0.3/",
+        output_parsers := { "ab-requests", "ab2-bytes", "ab2-latency" }
+    };
+
+    template Agents agent_list := {
+        ab2_client("haproxy-vnf:input", "dc1")
+    };
+
+    /* Modify spexperiment from TSPF_haproxy_nginxlb_nginx_wrk */
+    template TSP_Serviceprofiling_Experiment spexperiment2 modifies spexperiment := {
+        name := "haproxy-nginxlb-nginx-ab2",
+        agents := agent_list
+    };
+
+    control {
+        execute(TC_serviceprofiling(spexperiment2));
+    };
+}
+
