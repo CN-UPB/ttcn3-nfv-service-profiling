@@ -54,7 +54,7 @@ module TSPF_haproxy_nginx_wrk {
         name := "haproxy-nginx-wrk",
         repetitions := 10,
         profiling_timeout := 300.0,
-        service_name := "tsp-haproxy-nginx-service.son",
+        service_name := "tsp-haproxy-nginx-service",
         paramcfgs := paramcfg,
         agents := agent_list,
         monitors := monitor_list

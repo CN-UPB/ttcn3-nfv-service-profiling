@@ -42,7 +42,7 @@ module TSPF_haproxy_nginx_wrk_verification {
     };
 
     template TSP_Verification_Experiment spexperiment := {
-        service_name := "tsp-haproxy-nginx-service.son",
+        service_name := "tsp-haproxy-nginx-service",
         repetitions := 10,
         deviation := 0.10,
         verification_timeout := 300.0,

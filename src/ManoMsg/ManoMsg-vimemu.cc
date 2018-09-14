@@ -142,7 +142,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
     }
 
     std::string service_name = std::string(((const char*)send_par.service__name()));
-    std::string filepath = nsd_path + service_name;
+    std::string filepath = nsd_path + service_name + ".son";
 
     log("Create SFC from %s", filepath.c_str());
 
@@ -201,11 +201,16 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Agents& send_par)
  */
 void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 {
-    log("Cleanup vim-emu!");
+    log("Cleaning up vim-emu!");
 
-    stop_all_agents();
-    stop_docker_container();
-    start_docker_container();
+    try {
+        stop_all_agents();
+        stop_docker_container();
+        start_docker_container();
+    } catch(const std::exception& e) {
+        send_unsuccessful_operation_status("Could not clean up");
+        return;
+    }
 
     log("Cleaned up vim-emu. New vim-emu instance is running!");
     send_successful_operation_status();
@@ -244,7 +249,41 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         std::regex IP4("\\$\\{VNF:IP4:(.*)\\}");
         if(std::regex_search(cmd, match, IP4)) {
             std::ssub_match sub_match = match[1];
-            std::string ip4_from_name = sub_match.str();
+            std::string vnf_name = sub_match.str();
+
+            http_client client(vimemu_rest_url);
+            auto query = uri_builder("/restapi/compute/").to_string();
+
+            http_request req(methods::GET);
+            req.set_request_uri(query);
+
+            try {
+                http_response response = client.request(req).get();
+
+                if(response.status_code() == status_codes::OK) {
+                    // Get IP address and save it
+                    auto json_reply = response.extract_json().get();
+                    if(json_reply.is_array()) {
+                        for(auto const all_elements : json_reply.to_array()) {
+                            if(element.is_array()) {
+                                for(auto const element : elements.to_array()) {
+                            }
+                        }
+                    }
+                    auto ip_address = json_reply.at("")[0].at("ip").as_string();
+                    //std::vector<std::string> ip_address_elements;
+                    //boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
+                    //ip_agents[vnf_name] = ip_address_elements[0];
+
+                    log("Agent VNF %s created", vnf_name.c_str());
+
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (const http_exception &e) {
+                return false;
+            }
 
             auto ip4address = ip_agents[ip4_from_name];
             cmd = regex_replace(cmd, IP4, ip4address);
@@ -252,10 +291,21 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         }
 
         std::string ssh_start_cmd = "docker exec mn." + vnf_name + " service ssh start";
-        start_local_program(ssh_start_cmd);
+        try {
+            start_local_program(ssh_start_cmd);
+        } catch(const std::exception& e) {
+            send_unsuccessful_operation_status("Could not start SSH");
+            return;
+        }
 
         std::string ssh_get_port_cmd = "docker port mn." + vnf_name + " 22";
-        auto port_stdout = start_local_program(ssh_get_port_cmd);
+        std::string port_stdout;
+        try {
+            port_stdout = start_local_program(ssh_get_port_cmd);
+        } catch(const std::exception& e) {
+            send_unsuccessful_operation_status("Could not get SSH port");
+            return;
+        }
 
         // Split port from command output
         std::vector<std::string> port_elements;
@@ -266,10 +316,22 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         std::string command = "sshpass -p \"root\" ssh -oStrictHostKeyChecking=no root@localhost -p " + agent_port + " " + cmd;
 
         if(output_parsers.size_of() == 0) {
-            start_local_program(command, true);
+            try {
+                start_local_program(command, true);
+            } catch(const std::exception& e) {
+                send_unsuccessful_operation_status("Could not start program");
+                return;
+            }
         } else {
             // Get the command output
-            auto command_stdout = start_local_program(command);
+            std::string command_stdout;
+            try {
+                command_stdout = start_local_program(command);
+            } catch(const std::exception& e) {
+                send_unsuccessful_operation_status("Could not start program");
+                return;
+            }
+
             log("Command output: %s", command_stdout.c_str());
             std::map<std::string, std::string> agent_metrics;
 
@@ -278,7 +340,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                 try {
                     agent_metrics[output_parser] = OutputParser::parse(command_stdout, output_parser);
                 } catch(const std::exception& e) {
-                    TTCN_error("Could not parse output: %s", e.what());
+                    send_unsuccessful_operation_status("Could not parse output");
+                    return;
                 }
                 log("Collected metric: %s", agent_metrics[output_parser].c_str());
             }
@@ -352,6 +415,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                     }
                 } catch(const std::exception& e) {
                     log("Something with the future was wrong: %s, valid: %d", e.what(), future.valid());
+                    send_unsuccessful_operation_status("Could not get future");
+                    return;
                 }
             }
             monitor_futures.clear();
@@ -373,6 +438,8 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             if(monitor_metrics.is_bound()) {
                 cmd_reply.monitor__metrics() = monitor_metrics;
             }
+
+            send_successful_operation_status();
             incoming_message(cmd_reply);
         }
     }
@@ -388,9 +455,6 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
 {
     std::string service_name = std::string(((const char*)send_par.service__name()));
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfg());
-
-    std::vector<std::string> service_name_elements;
-    boost::split(service_name_elements, service_name, boost::is_any_of("."));
 
     for(int i = 0; i < parameters.lengthof(); i++) {
         std::string vnf_name = (const char*)parameters[i].function__id();
@@ -426,30 +490,39 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
 
         log("Setting parameter configuration of VNF %s", vnf_name.c_str());
 
-        std::string filename = nsd_path  + service_name_elements[0] + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "-vnfd.yml";
+        std::string filename = nsd_path  + service_name + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "-vnfd.yml";
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
         std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
         log("Command: %s", cmd.c_str());
 
-        start_local_program(cmd);
+        try {
+            start_local_program(cmd);
+        } catch(const std::exception& e) {
+            send_unsuccessful_operation_status("Could not set parameters with python script");
+            return;
+        }
     }
 
     // Create the service package
-    std::string son_cmd = "son-package --project " + nsd_path  + service_name_elements[0] + "-emu -d " + nsd_path + " -n " + service_name_elements[0];
+    std::string son_cmd = "son-package --project " + nsd_path  + service_name + "-emu -d " + nsd_path + " -n " + service_name;
     log("Command: %s", son_cmd.c_str());
-    auto son_cmd_output = start_local_program(son_cmd);
+    std::string son_cmd_output;
+    try {
+        son_cmd_output = start_local_program(son_cmd);
+        log("Command output: %s", son_cmd_output.c_str());
 
-    log("Command output: %s", son_cmd_output.c_str());
+        log("Setting parameter configuration of SFC %s completed", service_name.c_str());
+        send_successful_operation_status();
+    } catch (const std::runtime_error& e) {
+        log("Error when executing %s", son_cmd.c_str());
 
-    log("Setting parameter configuration of SFC %s completed", service_name.c_str());
-    send_successful_operation_status();
+        send_unsuccessful_operation_status("Could not run son-package");
+    }
 }
 
 void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
-    std::string service_name((const char*)send_par.service__name());
-
     for(int i = 0; i < send_par.monitors().size_of(); i++) {
         std::string vnf_name((const char*)send_par.monitors()[i].vnf__name());
         int interval = ((const int)send_par.monitors()[i].interval());
@@ -640,6 +713,7 @@ bool ManoMsg::apply_additional_parameters_for_sfc() {
  * Start an Agent
  * @param vnf_name Name of the VNF
  * @param vnf_image Image of the VNF
+ * @return True if the operation was successful, else false
  */
 bool ManoMsg::start_agent(std::string vnf_name, std::string vnf_image) {
     log("Start Agent VNF with name %s from image %s", vnf_name.c_str(), vnf_image.c_str());
@@ -661,11 +735,11 @@ bool ManoMsg::start_agent(std::string vnf_name, std::string vnf_image) {
             running_agents.push_back(vnf_name);
 
             // Get IP address and save it
-            auto json_reply = response.extract_json().get();
-            auto ip_address = json_reply.at("network")[0].at("ip").as_string();
-            std::vector<std::string> ip_address_elements;
-            boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
-            ip_agents[vnf_name] = ip_address_elements[0];
+            //auto json_reply = response.extract_json().get();
+            //auto ip_address = json_reply.at("network")[0].at("ip").as_string();
+            //std::vector<std::string> ip_address_elements;
+            //boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
+            //ip_agents[vnf_name] = ip_address_elements[0];
 
             log("Agent VNF %s created", vnf_name.c_str());
 
@@ -680,6 +754,7 @@ bool ManoMsg::start_agent(std::string vnf_name, std::string vnf_image) {
 
 /**
  * Stops all Agent VNFs 
+ * @return True if the operation was successful, else false
  */
 bool ManoMsg::stop_all_agents() {
     log("Stopping all Agents");
@@ -730,6 +805,7 @@ bool ManoMsg::stop_agent(std::string vnf_name) {
  * Connects an Agent to an SFC
  * @param vnf_name The name of the VNF that should be connected to the SFC
  * @param vnf_cp The connection point that the VNF should be connected to
+ * @return true if the operation was successful, else false
  */
 bool ManoMsg::connect_agent_to_sfc(std::string vnf_name, std::string vnf_cp) {
     log("Connect %s to connection point %s", vnf_name.c_str(), vnf_cp.c_str());
@@ -799,6 +875,11 @@ void ManoMsg::start_docker_container() {
     log("Started docker container");
 }
 
+/**
+ * Tries to connect to vim-emu until it is available or the maximum amount of retries have been reached
+ * @param retries Number of retries
+ * @return True if the connection to vim-emu was successful, else false
+ */
 bool ManoMsg::wait_for_vim_emu(int retries) {
     // Test connection to vim-emu (and wait until it is available)
     http_client client(gatekeeper_rest_url);
@@ -816,7 +897,7 @@ bool ManoMsg::wait_for_vim_emu(int retries) {
         }
 
         log("Retrying request to vim-emu");
-        // wait 2 seconds if the request did not work
+        // wait if the request did not work
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
         retries--;
@@ -852,7 +933,7 @@ void ManoMsg::start_local_program_and_wait(std::string command) {
             ec);
 
     if(ec.value() != boost::system::errc::success) {
-        TTCN_error("Could not start command, exit code: %d", ec.value());
+        throw std::runtime_error("Could not run program");
     }
 }
 
@@ -877,7 +958,7 @@ std::string ManoMsg::start_local_program(std::string command, bool background) {
                 ec);
 
         if(ec.value() != boost::system::errc::success) {
-            TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
+            throw std::runtime_error("Could not run the command");
         }
     } else {
         boost::process::child c(command,
@@ -891,11 +972,11 @@ std::string ManoMsg::start_local_program(std::string command, bool background) {
         try {
             ios.run();
         } catch(const boost::process::process_error &e) {
-            TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+            throw std::runtime_error("Could not run the command");
         }
 
         if(ec.value() != boost::system::errc::success) {
-            TTCN_error("Could not run %s, error code: %d", command.c_str(), ec.value());
+            throw std::runtime_error("Could not run the command");
         }
 
 
@@ -907,11 +988,11 @@ std::string ManoMsg::start_local_program(std::string command, bool background) {
 
             return output;
         } catch (const boost::process::process_error &e) {
-            TTCN_error("There was an error while executing %s, %s", command.c_str(), e.what());
+            throw std::runtime_error("Could not run the command");
         }
     }
 
-    // The method should never come here
+    // The method should never return here
     return "";
 }
 

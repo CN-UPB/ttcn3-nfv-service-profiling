@@ -54,7 +54,6 @@ namespace TSP__PortType {
             std::string sfc_service_uuid;
             std::string sfc_service_instance_uuid;
             std::vector<std::string> running_agents;
-            std::map<std::string, std::string> ip_agents;
             std::map<std::string, std::map<std::string, std::string>> vnf_additional_parameters;
 
             /* Adapter state */

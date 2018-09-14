@@ -3,6 +3,11 @@ module TSP_Functions {
     import from TSP_Types all;
     import from TSP_PortType all;
 
+    /**
+     * Creates a flat list of parameters, their possible values and the current set value. Starting value is the first value
+     * @param spe_params ParameterConfigurationMacros that are used to build the list of parameters
+     * @return ParameterConfigurations The built list
+     */
     function f_create_starting_parameter_config(template ParameterConfigurationMacros spe_params) return template ParameterConfigurations {
         var template ParameterConfigurations paramcfgs := {};
 
@@ -100,6 +105,11 @@ module TSP_Functions {
     }
 
 
+    /**
+     * Increments one value from a ParameterConfigurations list. If the value overflows, the special value "overflow" is set
+     * @param paramcfgs The ParameterConfigurations list that should be used
+     * @param index_param Index of the element in paramcfgs that should be incremented
+     */
     function f_increment_parameter_config(inout template ParameterConfigurations paramcfgs, integer index_param) {
         log("Incrementing ", paramcfgs[index_param].parameter_name);
 
@@ -115,10 +125,21 @@ module TSP_Functions {
     }
 
 
+    /**
+     * Set a specific value in a ParameterConfigurations list to its initial value
+     * @param paramcfgs The ParameterConfigurations list
+     * @param index_param Index of the element in the ParameterConfigurations list that should be set to its initial value
+     */
     function f_set_parameter_config_to_initial_value(inout template ParameterConfigurations paramcfgs, integer index_param) {
         paramcfgs[index_param].current_value := valueof(paramcfgs[index_param].value_list[0]);
     }
 
+    /**
+     * Finds the index for a specific element in a ParameterCharList
+     * @param element The element that should be searched for
+     * @param list The ParameterCharList list that should be search
+     * @return Index of the element in the ParameterCharList. Set to -1 if there is no such element in the list
+     */
     function f_find_index_for_element_in_parametercharlist(charstring element, ParameterCharList list) return integer {
         for(var integer i := 0; i < sizeof(list); i := i + 1) {
             if(list[i] == element) {
@@ -130,6 +151,12 @@ module TSP_Functions {
         return -1;
     }
 
+    /**
+     * Finds the index for a specific metric identified by a output_parser charstring in a Metrics list
+     * @param output_parser The output_parser that should be used to search for a Metric
+     * @param metrics The Metrics list that should be searched
+     * @return Index of the element in the Metrics list. Set to -1 if there is no such element in the list
+     */
     function f_find_metric_index_from_output_parser(Metrics metrics, charstring output_parser) return integer {
         for(var integer i := 0; i < sizeof(metrics); i := i + 1) {
             if(metrics[i].output_parser == output_parser) {
@@ -141,6 +168,11 @@ module TSP_Functions {
         return -1;
     }
 
+    /**
+     * Converts a ParameterList to a ParameterCharList
+     * @param paramlist The ParameterList
+     * @return The created ParameterCharList
+     */
     function f_paramlist_to_charlist(ParameterList paramlist) return ParameterCharList {
         var ParameterCharList paramcharlist;
         for(var integer i := 0; i < sizeof(paramlist); i := i + 1) {
@@ -149,6 +181,11 @@ module TSP_Functions {
         return paramcharlist;
     }
 
+    /**
+     * Converts a ParameterFloatList to a ParameterCharList
+     * @param paramlist The ParameterFloatList
+     * @return The created ParameterCharList
+     */
     function f_paramfloatlist_to_charlist(ParameterFloatList paramfloatlist) return ParameterCharList {
         var ParameterCharList paramcharlist;
         for(var integer i := 0; i < sizeof(paramfloatlist); i := i + 1) {
@@ -156,6 +193,13 @@ module TSP_Functions {
         }
         return paramcharlist;
     }
+
+    /**
+     * Tests if a parameter is overflown in a ParameterConfigurations list
+     * @param paramcfgs The ParameterConfigurations list
+     * @param index_param The index of the parameter that should be checked
+     * @return true if the element overflowed, else false
+     */
     function f_test_for_parameter_overflow(template ParameterConfigurations paramcfgs, integer index_param) return boolean {
         if(valueof(paramcfgs[index_param].current_value) == "overflow") {
             return true;
@@ -164,19 +208,19 @@ module TSP_Functions {
         }
     }
 
+    /**
+     * Altstep for Operation_Status handling from the MANO component
+     */
     altstep receive_Operation_Status() runs on MANO {
         [] Mano.receive(Operation_Status:{ success := true, reason := "" }) {
-            // Everything OK so only stop the timer
-            serviceprofiling_timer.stop;
-        }
+            // Everything OK
+           }
         [] Mano.receive {
             // We got junk and that should never happen
-            serviceprofiling_timer.stop;
             setverdict(fail);
             stop;
            }
         [] serviceprofiling_timer.timeout {
-            serviceprofiling_timer.stop;
             setverdict(fail);
             stop;
            }

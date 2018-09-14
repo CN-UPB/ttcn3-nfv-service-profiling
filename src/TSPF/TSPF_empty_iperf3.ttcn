@@ -43,7 +43,7 @@ module TSPF_empty_iperf3 {
         name := "empty-iperf3",
         repetitions := 1,
         profiling_timeout := 300.0,
-        service_name := "sonata-empty-service.son",
+        service_name := "sonata-empty-service",
         paramcfgs := paramcfg,
         agents := agent_list,
         monitors := monitor_list
