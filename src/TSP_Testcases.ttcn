@@ -57,7 +57,7 @@ module TSP_Testcases {
                 serviceprofiling_timer.stop;
                
                 // We get a second message if the operation was successful
-                var Start_CMD_Reply cmd_reply := {};
+                var Start_CMD_Reply cmd_reply;
                 alt {
                     [] Mano.receive(Start_CMD_Reply:?) -> value cmd_reply {
                         // We received a metric
@@ -80,8 +80,7 @@ module TSP_Testcases {
                        }
                 }
 
-
-                template Cleanup_Request cleanup_req := {}
+                template Cleanup_Request cleanup_req := {};
                 Mano.send(cleanup_req);
                 serviceprofiling_timer.start(30.0);
                 receive_Operation_Status();

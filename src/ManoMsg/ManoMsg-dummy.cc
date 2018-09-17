@@ -73,6 +73,10 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 
 void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 {
+    // First a success message
+    send_successful_operation_status();
+
+    // Then the Reply
     TSP__Types::Start__CMD__Reply cmd_reply;
     TSP__Types::Metrics metrics;
     TSP__Types::Metric metric;

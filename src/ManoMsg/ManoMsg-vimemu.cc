@@ -247,12 +247,16 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
         // replace macros in commands
         std::smatch match;
         std::regex IP4("\\$\\{VNF:IP4:(.*)\\}");
+
+        // IP4
         if(std::regex_search(cmd, match, IP4)) {
+            log("Replacing IP4 in CMD");
+            std::string ip4address;
             std::ssub_match sub_match = match[1];
             std::string vnf_name = sub_match.str();
 
             http_client client(vimemu_rest_url);
-            auto query = uri_builder("/restapi/compute/").to_string();
+            auto query = uri_builder("/restapi/compute").to_string();
 
             http_request req(methods::GET);
             req.set_request_uri(query);
@@ -260,32 +264,50 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
             try {
                 http_response response = client.request(req).get();
 
+                log("Status Code is: %d", response.status_code());
+
                 if(response.status_code() == status_codes::OK) {
                     // Get IP address and save it
                     auto json_reply = response.extract_json().get();
+                    log("JSON Reply: %s", json_reply.serialize().c_str());
                     if(json_reply.is_array()) {
-                        for(auto const all_elements : json_reply.to_array()) {
-                            if(element.is_array()) {
-                                for(auto const element : elements.to_array()) {
+                        for(auto const all_elements : json_reply.as_array()) {
+                            std::string json_element_name("\"" + vnf_name + "\"");
+                            if(all_elements.at(0).serialize() == json_element_name ) {
+                                auto network = all_elements.at(1).at("network");
+
+                                for(size_t i = 0; i < network.size(); i++) {
+                                    if(network.at(i).at("intf_name").serialize() == "\"input\"") {
+                                        std::string ip_cidr = network.at(i).at("ip").serialize();
+                                        if(ip_cidr.size() > 2) {
+                                            ip_cidr.erase(0,1);
+                                            ip_cidr.erase(ip_cidr.size() - 1);
+
+                                            std::vector<std::string> ip_cidr_split;
+                                            boost::split(ip_cidr_split, ip_cidr, boost::is_any_of("/"));
+                                            ip4address = ip_cidr_split[0];
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                    auto ip_address = json_reply.at("")[0].at("ip").as_string();
+
+                    //auto ip_address = json_reply.at("")[0].at("ip").as_string();
                     //std::vector<std::string> ip_address_elements;
                     //boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
                     //ip_agents[vnf_name] = ip_address_elements[0];
 
-                    log("Agent VNF %s created", vnf_name.c_str());
 
-                    return true;
                 } else {
-                    return false;
+                    send_unsuccessful_operation_status("Could not start CMD, as the IP address could not be determined");
+                    return;
                 }
             } catch (const http_exception &e) {
-                return false;
+                    send_unsuccessful_operation_status("Could not start CMD, as the IP address could not be determined (Exception)");
+                    return;
             }
 
-            auto ip4address = ip_agents[ip4_from_name];
             cmd = regex_replace(cmd, IP4, ip4address);
             log("Replaced IP4 in command. IP4 is: %s", ip4address.c_str());
         }
@@ -456,23 +478,15 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
     std::string service_name = std::string(((const char*)send_par.service__name()));
     auto parameters = ((const TSP__Types::ParameterConfigurations)send_par.paramcfg());
 
+    std::map<std::string, std::map<std::string, std::string>> vnf_to_parameter_dict;
+
     for(int i = 0; i < parameters.lengthof(); i++) {
         std::string vnf_name = (const char*)parameters[i].function__id();
-
-        // All main values that vim-emu supports via the SONATA package format
-        int vcpus;
-        int memory;
-        int storage;
-
         std::string additional_parameter_name((const char*)parameters[i].parameter__name());
         std::string additional_parameter_value((const char*)parameters[i].current__value());
 
-        if(additional_parameter_name == "vcpus") {
-            vcpus = std::atoi(additional_parameter_value.c_str());
-        } else if(additional_parameter_name == "memory") {
-            memory = std::atoi(additional_parameter_value.c_str());
-        } else if(additional_parameter_name == "storage") {
-            storage = std::atoi(additional_parameter_value.c_str());
+        if(additional_parameter_name == "vcpus" || additional_parameter_name == "memory" || additional_parameter_name == "storage") {
+            vnf_to_parameter_dict[vnf_name][additional_parameter_name] = additional_parameter_value;
         } else {
             if(additional_parameter_name == "cpu_time") {
                 additional_parameter_name = "cpu_bw";
@@ -484,17 +498,25 @@ void ManoMsg::outgoing_send(const TSP__Types::Set__Parameter__Config& send_par)
             // We handle additional parameters at another location
             vnf_additional_parameters[vnf_name][additional_parameter_name] = additional_parameter_value;
         }
+    }
 
-        // We have to replace _ with - because of file structure
-        std::replace(vnf_name.begin(), vnf_name.end(), '_', '-');
+    // We have to replace _ with - because of file structure
+    //std::replace(vnf_name.begin(), vnf_name.end(), '_', '-');
 
+
+    for(auto const& vnf_param : vnf_to_parameter_dict) {
+        std::string vnf_name(vnf_param.first);
         log("Setting parameter configuration of VNF %s", vnf_name.c_str());
+
+        std::string vcpus(vnf_to_parameter_dict[vnf_name]["vcpus"]);
+        std::string memory(vnf_to_parameter_dict[vnf_name]["memory"]);
+        std::string storage(vnf_to_parameter_dict[vnf_name]["storage"]);
 
         std::string filename = nsd_path  + service_name + "-emu" + "/sources/vnf/" + vnf_name + "/" + vnf_name + "-vnfd.yml";
         log("Filename %s", filename.c_str());
 
         // Change the Parameters
-        std::string cmd = "python3 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + std::to_string(vcpus) + " " + std::to_string(memory) + " " + std::to_string(storage);
+        std::string cmd = "python2 ../bin/set-resource-configuration.py " + filename + " " + vnf_name + " " + vcpus + " " + memory + " " + storage;
         log("Command: %s", cmd.c_str());
 
         try {
