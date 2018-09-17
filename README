@@ -2,9 +2,12 @@
 
 * Prerequisite: Ubuntu 16.04
 * `sudo apt install libcpprest-dev libxml2-dev expect`
+* Current python ruaeml.yaml version: `sudo sudo pip install ruamel.yaml`
 * Install newer boost version (>= 1.67)
 * Install Titan binaries and add them to $PATH variable
 * son-cli
+** `son-workspace --init`
+** Test: son-package -h
 * son-examples
 * apt install sshpass
 * Configure Docker Engine API to listen on TCP port:

@@ -12,7 +12,7 @@ module TSP_Testcases {
         // and saving the current state of parameter configurations
         var template ParameterConfigurations paramcfgs := f_create_starting_parameter_config(spe.paramcfgs);
 
-        // We current number of runs
+        // The current number of runs
         var integer run := 0;
 
         // False, if there are SPP parameters that should be tested
@@ -24,36 +24,77 @@ module TSP_Testcases {
             for(var integer repetition := 0; repetition < valueof(spe.repetitions); repetition := repetition + 1) {
                 template Set_Parameter_Config param_config_request := { spe.service_name, paramcfgs };
                 Mano.send(param_config_request);
-
                 serviceprofiling_timer.start(30.0);
-                receive_Operation_Status();
+                // This alternative cannot be put into a function or altstep due to the cotinue keyword
+                alt {
+                     [] Mano.receive(Operation_Status:{ success := false, reason := ? }) {
+                            // There was a non fatal error, so clean up and restart at the start of the loop
+                            setverdict(inconc);
+                            f_perform_cleanup();
+                            continue;
+                    }
+                     [] receive_Operation_Status();
+                }
                 serviceprofiling_timer.stop;
 
                 log("Current SPP configuration: ", paramcfgs);
                 template Setup_SFC setup_sfc_req := { spe.service_name }
                 Mano.send(setup_sfc_req);
                 serviceprofiling_timer.start(30.0);
-                receive_Operation_Status();
+                alt {
+                     [] Mano.receive(Operation_Status:{ success := false, reason := ? }) {
+                            // There was a non fatal error, so clean up and restart at the start of the loop
+                            setverdict(inconc);
+                            f_perform_cleanup();
+                            continue;
+                    }
+                     [] receive_Operation_Status();
+                }
                 serviceprofiling_timer.stop;
 
                 template Add_Agents add_agents_request := { spe.agents };
                 Mano.send(add_agents_request);
                 serviceprofiling_timer.start(30.0);
-                receive_Operation_Status();
+                alt {
+                     [] Mano.receive(Operation_Status:{ success := false, reason := ? }) {
+                            // There was a non fatal error, so clean up and restart at the start of the loop
+                            setverdict(inconc);
+                            f_perform_cleanup();
+                            continue;
+                    }
+                     [] receive_Operation_Status();
+                }
                 serviceprofiling_timer.stop;
 
                 if(ispresent(spe.monitors)) {
                     template Add_Monitors add_monitors_request := { spe.service_name, spe.monitors };
                     Mano.send(add_monitors_request);
                     serviceprofiling_timer.start(30.0);
-                    receive_Operation_Status();
+                    alt {
+                         [] Mano.receive(Operation_Status:{ success := false, reason := ? }) {
+                                // There was a non fatal error, so clean up and restart at the start of the loop
+                                setverdict(inconc);
+                                f_perform_cleanup();
+                                continue;
+                        }
+                         [] receive_Operation_Status();
+                    }
+
                     serviceprofiling_timer.stop;
                 }
 
                 template Start_CMD start_cmd_request := { spe.agents };
                 Mano.send(start_cmd_request);
                 serviceprofiling_timer.start(valueof(spe.profiling_timeout));
-                receive_Operation_Status();
+                alt {
+                     [] Mano.receive(Operation_Status:{ success := false, reason := ? }) {
+                            // There was a non fatal error, so clean up and restart at the start of the loop
+                            setverdict(inconc);
+                            f_perform_cleanup();
+                            continue;
+                    }
+                     [] receive_Operation_Status();
+                }
                 serviceprofiling_timer.stop;
                
                 // We get a second message if the operation was successful
@@ -80,11 +121,7 @@ module TSP_Testcases {
                        }
                 }
 
-                template Cleanup_Request cleanup_req := {};
-                Mano.send(cleanup_req);
-                serviceprofiling_timer.start(30.0);
-                receive_Operation_Status();
-                serviceprofiling_timer.stop;
+                f_perform_cleanup();
 
                 run := run + 1;
             }
@@ -97,7 +134,7 @@ module TSP_Testcases {
             // This works like an odometer
             for(var integer i := last_param_index; i > 0; i := i - 1) {
                 // If there is an overflow, set it to the initial value and increment
-                // he previous value
+                // the previous value
                 if(f_test_for_parameter_overflow(paramcfgs, i)) {
                     f_set_parameter_config_to_initial_value(paramcfgs, i);
                     f_increment_parameter_config(paramcfgs, i-1);

@@ -209,22 +209,22 @@ module TSP_Functions {
     }
 
     /**
+     * Perform a cleanup
+     */
+    function f_perform_cleanup() runs on MANO {
+        template Cleanup_Request cleanup_req := {};
+        Mano.send(cleanup_req);
+        serviceprofiling_timer.start(30.0);
+        receive_Operation_Status();
+        serviceprofiling_timer.stop;
+    }
+
+    /**
      * Altstep for Operation_Status handling from the MANO component
      */
     altstep receive_Operation_Status() runs on MANO {
         [] Mano.receive(Operation_Status:{ success := true, reason := "" }) {
             // Everything OK
-        }
-        [] Mano.receive(Operation_Status:{ success := false, reason := "" }) {
-            // There was a non fatal error, so clean up and restart at the start of the loop
-            setverdict(inconc);
-            template Cleanup_Request cleanup_req := {};
-            Mano.send(cleanup_req);
-            serviceprofiling_timer.start(30.0);
-            receive_Operation_Status();
-            serviceprofiling_timer.stop;
-
-            //continue;
         }
         [] Mano.receive {
             // We got junk and that should never happen
