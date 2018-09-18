@@ -1,0 +1,50 @@
+module TSPF_nginx_wrk {
+    import from TSP_Types all;
+    import from TSP_Testcases all;
+    import from TSP_Templates all;
+
+    template ParameterConfigurationMacros paramcfg := {
+        {
+            function_id := "nginx-vnf",
+            vcpus := { 1,2,3,4,5,6,7,8 },
+            memory := { 32, 64, 128 },
+            storage := { 10 },
+            additional_parameters := {
+                { "cpu_time", { floatlist := { 0.1, 0.5, 1.0 }
+                }}
+            }
+        }
+
+    };
+
+    template Agent wrk_client(charstring cp, charstring dc) := {
+        name := "client",
+        connection_point := cp,
+        image := "tsp-wrk-ssh",
+        datacenter := dc,
+        cmd := "wrk -s /json.lua http://${VNF:IP4:nginx-vnf}",
+        output_parsers := { "wrk-json-requests", "wrk-json-bytes", "wrk-json-latency-99percentile" }
+    };
+
+    template Agents agent_list := {
+        wrk_client("nginx-vnf:input", "dc1")
+    };
+
+    template Monitors monitor_list := {
+        docker_monitor("nginx-vnf", 1)
+    };
+
+    template TSP_Serviceprofiling_Experiment spexperiment := {
+        name := "nginx-wrk",
+        repetitions := 10,
+        profiling_timeout := 300.0,
+        service_name := "tsp-nginx-service",
+        paramcfgs := paramcfg,
+        agents := agent_list,
+        monitors := monitor_list
+    };
+
+    control {
+        execute(TC_serviceprofiling(spexperiment));
+    };
+}

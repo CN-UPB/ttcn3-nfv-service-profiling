@@ -1,0 +1,76 @@
+
+---
+descriptor_version: "1.0"
+
+vendor: "de.cdroege"
+name: "tsp-nginx-service"
+version: "0.1"
+author: "Christian Dröge, mail@cdroege.de"
+description: "Haproxy and nginx SFC"
+
+##
+## The various network functions this service
+## is composed of.
+##
+network_functions:
+  - vnf_id: "nginx-vnf"
+    vnf_vendor: "de.cdroege"
+    vnf_name: "nginx-vnf"
+    vnf_version: "0.1"
+
+
+##
+## The NS connection points to the 
+## outside world.
+##
+connection_points:
+  - id: "mgmt"
+    interface: "ipv4"
+    type: "management"
+  - id: "input"
+    interface: "ipv4"
+    type: "external"
+
+##
+## The virtual links that interconnect
+## the different connections points.
+##
+virtual_links:
+  - id: "mgmt"
+    connectivity_type: "E-LAN"
+    connection_points_reference:
+      - "nginx-vnf:mgmt"
+      - "mgmt"
+  - id: "link-input"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "input"
+      - "nginx-vnf:input"
+  - id: "link-input-rev"
+    connectivity_type: "E-Line"
+    connection_points_reference:
+      - "nginx-vnf:input"
+      - "input"
+
+##
+## The forwarding graphs.
+##
+forwarding_graphs:
+  - fg_id: "fg01"
+    number_of_endpoints: 2
+    number_of_virtual_links: 2
+    constituent_virtual_links: 
+      - "mgmt"
+      - "link-input"
+      - "link-input-rev"
+    constituent_vnfs:
+      - "nginx-vnf"
+    network_forwarding_paths:
+      - fp_id: "fg01:fp01"
+        policy: "none"
+        connection_points:
+          - connection_point_ref: "input"
+            position: 1
+          - connection_point_ref: "nginx-vnf:input"
+            position: 2
+

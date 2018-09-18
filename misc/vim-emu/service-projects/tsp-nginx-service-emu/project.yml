@@ -1,0 +1,8 @@
+package:
+  description: "nginx SFC"
+  maintainer: "Christian Dröge, mail@cdroege.de"
+  name: tsp-nginx-service
+  vendor: de.cdroege
+  version: '0.1'
+descriptor_extension: "yml"
+version: '0.5'
