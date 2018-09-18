@@ -6,7 +6,7 @@ Here are the steps to run a TSP service profiling test case:
 * Install dependencies:
 ```sudo apt install libcpprest-dev libxml2-dev expect sshpass
 ```
-* Current python ruaeml.yaml version:
+* Install current python ruaeml.yaml version:
 ```sudo pip install ruamel.yaml
 ```
 * Install newer boost version (>= 1.67)
@@ -40,7 +40,7 @@ ExecStart=
 ExecStart=/usr/bin/dockerd -H fd:// -H tcp://127.0.0.1:2376```
 ** Restart Docker:
 ```systemctl restart docker```
-* Install a vim-emu fork (only a default nfv topology file and a better WSGI framework the DummyGateKeeper was used):
+* Install a vim-emu fork (only a default nfv topology file and a better WSGI framework for the DummyGateKeeper was used):
 ```git clone https://github.com/cdroege/son-emu
 cd ~/son-emu
 docker build -t vim-emu-img .
