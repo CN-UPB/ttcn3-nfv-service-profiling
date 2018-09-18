@@ -31,7 +31,7 @@ module TSPF_nginx_wrk {
     };
 
     template Monitors monitor_list := {
-        docker_monitor("nginx-vnf", 1)
+        generic_monitor("nginx-vnf", 1)
     };
 
     template TSP_Serviceprofiling_Experiment spexperiment := {

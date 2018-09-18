@@ -39,8 +39,8 @@ module TSP_Templates {
         cmd := "service nginx restart"
     };
 
-    /* Generic Monitor for all supported metrics for Docker */
-    template Monitor docker_monitor(charstring vnf, integer interval) := {
+    /* Generic Monitor for all supported metrics */
+    template Monitor generic_monitor(charstring vnf, integer interval) := {
         vnf_name := vnf,
         interval := interval,
         metrics := {

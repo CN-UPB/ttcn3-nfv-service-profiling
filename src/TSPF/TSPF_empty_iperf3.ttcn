@@ -36,7 +36,7 @@ module TSPF_empty_iperf3 {
     };
 
     template Monitors monitor_list := {
-        docker_monitor("empty-vnf1", 1)
+        generic_monitor("empty-vnf1", 1)
     };
 
     template TSP_Serviceprofiling_Experiment spexperiment := {
