@@ -114,6 +114,10 @@ void ManoMsg::user_unmap(const char * /*system_port*/)
 {
     stop_all_agents();
 
+    stop_monitors();
+    cleanup_monitors();
+    monitor_futures.clear();
+
     if(!sfc_service_instance_uuid.empty() && !sfc_service_uuid.empty()) {
         stop_sfc_service(sfc_service_uuid, sfc_service_instance_uuid);
     }
@@ -205,6 +209,11 @@ void ManoMsg::outgoing_send(const TSP__Types::Cleanup__Request& /*send_par*/)
 
     try {
         stop_all_agents();
+
+        stop_monitors();
+        cleanup_monitors();
+        monitor_futures.clear();
+
         stop_docker_container();
         start_docker_container();
     } catch(const std::exception& e) {
@@ -370,12 +379,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
 
             log("Stopping Monitors");
             // Stop all monitors
-            for(const auto & monitor : monitor_objects) {
-                monitor->stop();
-                delete monitor;
-            }
-            monitor_objects.clear();
-
+            stop_monitors();
             log("Stopped Monitors");
 
             // Construct the reply
@@ -442,6 +446,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                 }
             }
             monitor_futures.clear();
+            cleanup_monitors();
 
             TSP__Types::Start__CMD__Reply cmd_reply;
             TSP__Types::Metrics metrics;
@@ -1099,6 +1104,10 @@ void ManoMsg::Monitor::stop() {
     this->running = false;
 }
 
+/**
+ * Sends a unsuccesful operation status with a reason to the TE
+ * @param reason The reason for the failure
+ */
 void ManoMsg::send_unsuccessful_operation_status(std::string reason) {
     log("Unsuccessful operation: %s", reason.c_str());
     TSP__Types::Operation__Status operation_status;
@@ -1107,11 +1116,33 @@ void ManoMsg::send_unsuccessful_operation_status(std::string reason) {
     incoming_message(operation_status);
 }
 
+/**
+ * Sends a sucessful operation status to the TE
+ */
 void ManoMsg::send_successful_operation_status() {
     TSP__Types::Operation__Status operation_status;
     operation_status.success() = BOOLEAN(true);
     operation_status.reason() = CHARSTRING("");
     incoming_message(operation_status);
+}
+
+/**
+ * Stops all running monitors
+ */
+void ManoMsg::stop_monitors() {
+    for(const auto & monitor : monitor_objects) {
+        monitor->stop();
+    }
+}
+
+/**
+ * Cleans up all monitor objects
+ */
+void ManoMsg::cleanup_monitors() {
+    for(const auto & monitor : monitor_objects) {
+        delete monitor;
+    }
+    monitor_objects.clear();
 }
 
 } /* end of namespace */

@@ -80,6 +80,8 @@ namespace TSP__PortType {
             bool start_agent(std::string vnf_name, std::string vnf_image);
             bool stop_all_agents();
             bool stop_agent(std::string vnf_name);
+            void stop_monitors();
+            void cleanup_monitors();
             void start_docker_container();
             void stop_docker_container();
             bool wait_for_vim_emu(int retries);
