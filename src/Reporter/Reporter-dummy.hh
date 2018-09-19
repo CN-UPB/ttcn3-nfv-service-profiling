@@ -32,6 +32,7 @@ protected:
 	void user_stop();
 
 	void outgoing_send(const TSP__Types::Save__Metric& send_par);
+    void outgoing_send(const TSP__Types::Save__Status__Report& send_par);
 };
 
 } /* end of namespace */

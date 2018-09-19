@@ -36,6 +36,7 @@ namespace TSP__PortType {
             void user_start();
             void user_stop();
 
+            void outgoing_send(const TSP__Types::Environment__Request& send_par);
             void outgoing_send(const TSP__Types::Setup__SFC& send_par);
             void outgoing_send(const TSP__Types::Add__Agents& send_par);
             void outgoing_send(const TSP__Types::Add__Monitors& send_par);

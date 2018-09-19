@@ -6,22 +6,14 @@ module TSPF_haproxy_nginx_wrk {
     template ParameterConfigurationMacros paramcfg := {
         {
             function_id := "haproxy-vnf",
-            vcpus := { 1,2,3,4 },
-            memory := { 128, 256 },
-            storage := { 10 },
-            additional_parameters := {
-                { "cpu_time", { floatlist := { 0.1, 0.5, 1.0 }
-                }}
-            }
+            vcpus := { 1,2 },
+            memory := { 128 },
+            storage := { 10 }
         },{
             function_id := "nginx-vnf",
-            vcpus := { 1,2,3,4 },
-            memory := { 128, 256 },
-            storage := { 10 },
-            additional_parameters := {
-                { "cpu_time", { floatlist := { 0.1, 0.5, 1.0 }
-                }}
-            }
+            vcpus := { 1 },
+            memory := { 128 },
+            storage := { 10 }
         }
 
     };
@@ -46,7 +38,7 @@ module TSPF_haproxy_nginx_wrk {
 
     template TSP_Serviceprofiling_Experiment spexperiment := {
         name := "haproxy-nginx-wrk",
-        repetitions := 10,
+        repetitions := 1,
         profiling_timeout := 300.0,
         service_name := "tsp-haproxy-nginx-service",
         paramcfgs := paramcfg,

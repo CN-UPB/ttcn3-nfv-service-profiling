@@ -149,6 +149,35 @@ module TSP_Testcases {
                 all_parameters_tested := true;
             }
         }
+
+        // Request Test Execution Environment from MANO SA
+        var charstring mano;
+        template Environment_Request env_req := {};
+        Mano.send(env_req);
+        serviceprofiling_timer.start(30.0);
+        var Environment_Reply env_reply;
+        alt {
+            [] Mano.receive(Environment_Reply:?) -> value env_reply {
+                mano := env_reply.mano;
+            }
+            [] Mano.receive {
+                // We received an unexpected message
+                setverdict(fail);
+                stop;
+            }
+        }
+        serviceprofiling_timer.stop;
+
+        // Save finishing report
+        var verdicttype local_verdict := getverdict;
+        template Save_Status_Report report := {
+            mano := mano,
+            service_name := spe.service_name,
+            methodology := testcasename(),
+            run_count := run,
+            verdict := local_verdict
+        }
+        Report.send(report);
     }
 
     // A verification test case for NFV service profiling

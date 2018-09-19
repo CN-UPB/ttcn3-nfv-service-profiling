@@ -119,6 +119,19 @@ module TSP_Types {
 
   type record Cleanup_Request { };
 
+  type record Environment_Request { };
+  type record Environment_Reply {
+      charstring mano
+  }
+
+  type record Save_Status_Report {
+      charstring mano,
+      charstring service_name,
+      charstring methodology,
+      integer run_count,
+      verdicttype verdict
+  }
+
   type record Operation_Status {
       boolean success,
       charstring reason optional

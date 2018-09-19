@@ -95,6 +95,50 @@ void Reporter::user_stop()
 
 }
 
+void Reporter::outgoing_send(const TSP__Types::Save__Status__Report& send_par)
+{
+    std::string mano_name(send_par.mano());
+    std::string methodology(send_par.methodology());
+    std::string service(send_par.service__name());
+    VERDICTTYPE verdict = send_par.verdict();
+    int run_count = send_par.run__count();
+    std::string verdict_name;
+
+    switch(verdict) {
+        case PASS:
+            verdict_name = "pass";
+            break;
+        case INCONC:
+            verdict_name = "inconc (some runs skipped)";
+            break;
+        case FAIL:
+            verdict_name = "fail (should never be here)";
+            break;
+        case ERROR:
+            verdict_name = "error (should never be here)";
+            break;
+        case NONE:
+            verdict_name = "none (should never be here)";
+            break;
+    }
+
+    std::ofstream file;
+    boost::filesystem::path filepath = full_path / "report";
+    file.open(filepath.string(), std::ios_base::trunc);
+
+    if(file.fail()) {
+        TTCN_error("Could not open file for end report. Path: %s", filepath.c_str());
+    }
+
+    file << "MANO System Name: " << mano_name << std::endl;
+    file << "Service Name: " << service << std::endl;
+    file << "Methodology: " << methodology << std::endl;
+    file << "Runs: " << run_count << std::endl;
+    file << "Verdict: " << verdict_name << std::endl;
+
+    file.close();
+}
+
 void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 {
     save_metric(send_par);

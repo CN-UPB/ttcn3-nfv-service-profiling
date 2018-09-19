@@ -10,10 +10,13 @@ module TSP_PortType {
     in Start_CMD_Reply;
     out Cleanup_Request;
     in Operation_Status;
+    out Environment_Request;
+    in Environment_Reply;
   };
 
   type port Reporter message {
       out Save_Metric;
+      out Save_Status_Report;
   }
   
   type component MANO {

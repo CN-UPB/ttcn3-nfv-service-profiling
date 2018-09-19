@@ -65,6 +65,10 @@ void Reporter::user_stop()
 
 }
 
+void Reporter::outgoing_send(const TSP__Types::Save__Status__Report& send_par)
+{
+}
+
 void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 {
 }

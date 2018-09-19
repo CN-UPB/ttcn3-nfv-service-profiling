@@ -136,6 +136,17 @@ void ManoMsg::user_stop()
 }
 
 /**
+ * Replies to an Environment__Request
+ * @param send_par The (empty) Environment_Request message
+ */
+void ManoMsg::outgoing_send(const TSP__Types::Environment__Request& send_par)
+{
+    TSP__Types::Environment__Reply reply;
+    reply.mano() = CHARSTRING("vim-emu");
+    incoming_message(reply);
+}
+
+/**
  * Handles a send operation for a Setup_SFC request, e.g. start the SFC we want to profile
  * @param send_par Setup_SFC request containing the service name and the filepath to service package
  */

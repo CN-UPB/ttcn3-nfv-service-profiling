@@ -56,6 +56,13 @@ void ManoMsg::user_stop()
 
 }
 
+void ManoMsg::outgoing_send(const TSP__Types::Environment__Request& send_par)                                                                                                                                   
+{                                                                                                                                                                                                               
+    TSP__Types::Environment__Reply reply;                                                                                                                                                                       
+    reply.mano() = CHARSTRING("Dummy!");                                                                                                                                                                       
+    incoming_message(reply);                                                                                                                                                                                    
+}   
+
 void ManoMsg::outgoing_send(const TSP__Types::Setup__SFC& send_par)
 {
 	send_successful_operation_status();
