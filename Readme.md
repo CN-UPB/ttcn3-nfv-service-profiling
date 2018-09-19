@@ -48,6 +48,7 @@ docker build -t vim-emu-img .
 * Install Agents and VNFs
 ```cd misc/vim-emu/agents/ && bash build.sh
 cd misc/vim-emu/vnfs/ && bash build.sh```
+* Edit src/config.cfg
 * Build and start test executable:
 ```cd teaspoon/build
 make -j8 && ttcn3_start tsp-profiling config.cfg TSPF_nginx_wrk.control```
