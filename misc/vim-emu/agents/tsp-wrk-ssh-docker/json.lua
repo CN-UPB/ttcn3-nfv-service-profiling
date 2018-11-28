@@ -1,3 +1,5 @@
+-- Author: Tejas Kokje (github.com/tejaskokje)
+-- From: https://github.com/wg/wrk/pull/305
 -- example reporting script which demonstrates a custom
 -- done() function that prints results as JSON
 
