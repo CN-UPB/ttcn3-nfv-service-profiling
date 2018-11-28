@@ -34,6 +34,11 @@ Reporter::~Reporter()
 
 }
 
+/**
+ * Sets the configuration parameters from the config file
+ * @param parameter_name The name of the parameter
+ * @param parameter_value The value for the parameter
+ */
 void Reporter::set_parameter(const char * parameter_name,
         const char * parameter_value)
 {
@@ -71,6 +76,9 @@ void Reporter::Handle_Fd_Event_Readable(int /*fd*/)
 
 /*void Reporter::Handle_Timeout(double time_since_last_call) {}*/
 
+/**
+ * Handles the mapping TTCN-3 map operation. Save the current time as state and also creates directories where the report is saved
+ */
 void Reporter::user_map(const char * /*system_port*/)
 {
     // Create current time as a string
@@ -105,6 +113,10 @@ void Reporter::user_stop()
 
 }
 
+/**
+ * Handles a Save_Status_Report by saving a status report of a service profiling experiment to disc
+ * @param send_par Save__Status__Report Type containing the report information
+ */
 void Reporter::outgoing_send(const TSP__Types::Save__Status__Report& send_par)
 {
     std::string mano_name(send_par.mano());
@@ -149,12 +161,19 @@ void Reporter::outgoing_send(const TSP__Types::Save__Status__Report& send_par)
     file.close();
 }
 
+/**
+ * Handles the Save_Metric Request by saving the report to disc
+ */
 void Reporter::outgoing_send(const TSP__Types::Save__Metric& send_par)
 {
     save_metric(send_par);
     save_monitor_metrics(send_par);
 }
 
+/**
+ * Saves end-to-end metrics to disc
+ * @param send_par Save_Metric type containing the metrics
+ */
 void Reporter::save_metric(const TSP__Types::Save__Metric& send_par) 
 {
     std::ofstream csvfile;
@@ -204,6 +223,10 @@ void Reporter::save_metric(const TSP__Types::Save__Metric& send_par)
     csvfile.close();
 }
 
+/**
+ * Generates the Monitor report on disc
+ * @param send_par The Save_Metric request
+ */
 void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par) {
     boost::filesystem::path filename((const char*)send_par.experiment__name());
     int run = (const int)send_par.run();
@@ -220,6 +243,13 @@ void Reporter::save_monitor_metrics(const TSP__Types::Save__Metric& send_par) {
 
 }
 
+/**
+ * Writes the monitor ouput for a particular metric to a CSV file
+ * @param list Contains the metric values
+ * @param metric_name Name of the metric
+ * @param vnf_name Name of the VNF
+ * @param intervall The intervall used by the Monitor
+ */
 template <typename tsp_types_list>
 void Reporter::monitor_list_to_csv(tsp_types_list list, std::string metric_name, std::string vnf_name, int run, int intervall) {
     std::ofstream csvfile;
@@ -242,7 +272,9 @@ void Reporter::monitor_list_to_csv(tsp_types_list list, std::string metric_name,
     csvfile.close();
 }
 
-// TODO: Place logging function to a helper class
+/**
+ * Logging function (copied from Eclipse Titan documentation)
+ */
 void Reporter::log(const char *fmt, ...) {
     if (debug) {
         va_list ap;

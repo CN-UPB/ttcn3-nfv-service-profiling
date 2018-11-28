@@ -57,7 +57,7 @@ ManoMsg::~ManoMsg()
 }
 
 /**
- * Handle setting parameters from config file
+ * Handle setting a parameter from config file
  * @param parameter_name The name of the parameter
  * @param parameter_value The value of the parameter
  */
@@ -118,7 +118,7 @@ void ManoMsg::user_map(const char * /*system_port*/)
 
 /**
  * TTCN-3 unmap operation. Cleans up everything, e.g. stops all Agent VNFs, stops the
- * SFC and stop the vim-emu container
+ * SFC and stops the vim-emu container
  */
 void ManoMsg::user_unmap(const char * /*system_port*/)
 {
@@ -322,13 +322,6 @@ void ManoMsg::outgoing_send(const TSP__Types::Start__CMD& send_par)
                             }
                         }
                     }
-
-                    //auto ip_address = json_reply.at("")[0].at("ip").as_string();
-                    //std::vector<std::string> ip_address_elements;
-                    //boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
-                    //ip_agents[vnf_name] = ip_address_elements[0];
-
-
                 } else {
                     send_unsuccessful_operation_status("Could not start CMD, as the IP address could not be determined");
                     return;
@@ -594,7 +587,7 @@ void ManoMsg::outgoing_send(const TSP__Types::Add__Monitors& send_par) {
 }
 
 /**
- * Logging function for TITAN (copied from documentation)
+ * Logging function for TITAN (copied from Eclipse Titan documentation)
  */
 void ManoMsg::log(const char *fmt, ...) {
     if (debug) {
@@ -780,17 +773,8 @@ bool ManoMsg::start_agent(std::string vnf_name, std::string vnf_image) {
         http_response response = client.request(req).get();
 
         if(response.status_code() == status_codes::OK) {
-            running_agents.push_back(vnf_name);
-
-            // Get IP address and save it
-            //auto json_reply = response.extract_json().get();
-            //auto ip_address = json_reply.at("network")[0].at("ip").as_string();
-            //std::vector<std::string> ip_address_elements;
-            //boost::split(ip_address_elements, ip_address, boost::is_any_of("/"));
-            //ip_agents[vnf_name] = ip_address_elements[0];
-
             log("Agent VNF %s created", vnf_name.c_str());
-
+            running_agents.push_back(vnf_name);
             return true;
         } else {
             return false;
@@ -1044,6 +1028,13 @@ std::string ManoMsg::start_local_program(std::string command, bool background) {
     return "";
 }
 
+/**
+ * Monitor constructor
+ * @param vnf_name Name of the VNF that should be monitored
+ * @param metrics List of metrics that should be collected
+ * @param interval Collection interval of the Monitor
+ * @param docker_rest_url The REST URL of Docker
+ */
 ManoMsg::Monitor::Monitor(std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url) {
     this->vnf_name = vnf_name;
     this->metrics = metrics;
@@ -1051,6 +1042,10 @@ ManoMsg::Monitor::Monitor(std::string vnf_name, std::vector<std::string> metrics
     this->interval = interval;
 }
 
+/**
+ * Caluclate the CPU utilization
+ * @param json The JSON reply from Docker containing cpu usage information
+ */
 double ManoMsg::Monitor::calculate_cpu_percent(web::json::value json) {
     // The following algorithm is based on the Moby Project:
     // https://github.com/moby/moby/blob/eb131c5383db8cac633919f82abad86c99bffbe5/cli/command/container/stats_helpers.go#L175
@@ -1072,6 +1067,10 @@ double ManoMsg::Monitor::calculate_cpu_percent(web::json::value json) {
     return cpu_utilization;
 }
 
+/**
+ * Starts the metric collection of a Monitor
+ * @return The collected metrics
+ */
 std::future<std::map<std::string, std::map<std::string, std::vector<std::string>>>> ManoMsg::Monitor::run() {
     std::function<std::map<std::string, std::map<std::string, std::vector<std::string>>>(std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url, boolean* running)> collectMonitorMetric = [](std::string vnf_name, std::vector<std::string> metrics, int interval, std::string docker_rest_url, boolean* running) {
         std::map<std::string, std::vector<std::string>> metric_values;
@@ -1121,6 +1120,9 @@ std::future<std::map<std::string, std::map<std::string, std::vector<std::string>
     return std::async(std::launch::async, collectMonitorMetric, vnf_name, metrics, interval, docker_rest_url, &running);
 }
 
+/**
+ * Stop the metric collection of a Monitor
+ */
 void ManoMsg::Monitor::stop() {
     this->running = false;
 }

@@ -16,6 +16,11 @@
 
 namespace OutputParser {
 
+    /**
+     * Parses the output of a command
+     * @param input The output of the command
+     * @param parser Keyword for extracting a particular metric from the input
+     */
     std::string parse(std::string input, std::string parser) {
         if(parser.find("iperf3-json") == 0) {
             return parse_iperf3(input, parser);
@@ -29,6 +34,11 @@ namespace OutputParser {
         return "";
     }
 
+    /**
+     * Parses the output of wrk with JSON output
+     * @param input The output of wrk
+     * @param parser Keyword for extracting a particular metric from the input
+     */
     std::string parse_wrk(std::string input, std::string parser) {
         web::json::value metric;
 
@@ -63,6 +73,11 @@ namespace OutputParser {
         return metric.serialize();
     }
 
+    /**
+     * Parses the output of iperf3 with JSON output
+     * @param input The output of iperf3
+     * @param parser Keyword for extracting a particular metric from the input
+     */
     std::string parse_iperf3(std::string input, std::string parser) {
         web::json::value j = web::json::value::parse(input);
         web::json::value metric;
