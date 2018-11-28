@@ -33,8 +33,7 @@ sudo ./b2 -j8 install
 ldconfig
 ```
 * Install a current [cpprestsdk](https://github.com/Microsoft/cpprestsdk) version: https://github.com/Microsoft/cpprestsdk/wiki/How-to-build-for-Linux
-* Install Titan binaries and add them to $PATH variable
-  * Download from: https://projects.eclipse.org/projects/tools.titan/downloads
+* Install Titan binaries and add them to $PATH variable. Download from: https://projects.eclipse.org/projects/tools.titan/downloads
 ```
 cd
 mkdir -p titan.core/Install
@@ -43,26 +42,24 @@ tar xvzf ttcn3-6.4.pl0-linux64-gcc5.4-ubuntu16.04.tgz
 export PATH=$PATH:~/titan.core/Install/bin/
 export TTCN3_DIR=~/titan.core/Install/
 ```
-  * The command `compiler` should output something after this
-* Install son-cli
-  * Install instructions are here: https://github.com/sonata-nfv/son-cli/
-  * Initialize Workspace:
+* The command `compiler` should output something after this
+* Install son-cli. Follow the instructions here: https://github.com/sonata-nfv/son-cli/
+* Initialize Workspace:
 ```
 son-workspace --init
 ```
-  * Test:
+* Test:
 ```
 son-package -h
 ```
-* Configure Docker Engine API to listen on TCP port:
-  * Edit service file:
+* Configure Docker Engine API to listen on TCP port by editing the service file:
 ```
 $ systemctl edit docker
 [Service]
 ExecStart=
 ExecStart=/usr/bin/dockerd -H fd:// -H tcp://127.0.0.1:2376
 ```
-  * Restart Docker:
+* Restart Docker:
 ```
 systemctl restart docker
 ```
